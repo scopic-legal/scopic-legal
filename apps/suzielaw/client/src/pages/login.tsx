@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, CardContent, CardHeader } from '@teamsuzie/ui';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthProvider {
   id: string;
@@ -35,8 +35,13 @@ function GoogleMark() {
 }
 
 export function LoginPage() {
+  const navigate = useNavigate();
   const [providers, setProviders] = useState<AuthProvider[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [email, setEmail] = useState('demo@example.com');
+  const [password, setPassword] = useState('demo');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,38 +64,120 @@ export function LoginPage() {
     };
   }, []);
 
+  async function handleDemoSignIn(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(data.message || `Sign-in failed (${res.status})`);
+      }
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign-in failed');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted px-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <div className="text-center">
-            <div className="font-display text-5xl font-medium tracking-tight text-foreground">
-              Suzie Law
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="pointer-events-none absolute inset-0 grid-rules opacity-70" aria-hidden />
+      <div className="relative w-full max-w-sm">
+        {/* Decorative bauhaus header band */}
+        <div className="mb-8 flex items-center gap-3">
+          <span className="inline-block size-3 bg-saffron-400" aria-hidden />
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground/55">
+            Counsel · Sign in
+          </span>
+          <span className="h-px flex-1 bg-foreground/15" aria-hidden />
+        </div>
+
+        <div className="flex flex-col leading-none">
+          <span className="font-display text-[2.5rem] font-bold tracking-[-0.02em] text-foreground">
+            SUZIE
+          </span>
+          <span className="my-2 inline-block h-px w-10 bg-foreground/60" aria-hidden />
+          <span className="font-display text-[2.5rem] font-bold tracking-[-0.02em] text-foreground">
+            LAW
+          </span>
+        </div>
+
+        <p className="mt-6 font-serif text-[15px] italic text-foreground/65">
+          A specialised legal-AI workspace. Sign in to continue.
+        </p>
+
+        <div className="mt-8 flex flex-col gap-3 border-t border-foreground/15 pt-6">
           {providers.map((provider) => (
-            <Button
+            <button
               key={provider.id}
               type="button"
-              variant="outline"
-              className="w-full rounded-xl border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 shadow-sm transition-colors hover:border-neutral-300 hover:bg-neutral-50"
               onClick={() => {
                 window.location.href = provider.startUrl;
               }}
+              className="inline-flex w-full items-center justify-center gap-3 border border-foreground bg-background px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-foreground transition-colors hover:bg-foreground hover:text-background"
             >
               {provider.id === 'google' ? <GoogleMark /> : null}
               <span>Continue with {provider.label}</span>
-            </Button>
+            </button>
           ))}
+
           {loaded && providers.length === 0 && (
-            <p className="text-center text-sm text-muted-foreground">
-              No sign-in providers are configured.
-            </p>
+            <form onSubmit={handleDemoSignIn} className="flex flex-col gap-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/45">
+                Demo account · stub auth
+              </div>
+              <label className="block">
+                <span className="sr-only">Email</span>
+                <input
+                  type="email"
+                  required
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="block w-full border border-foreground/30 bg-background px-3 py-2.5 font-mono text-[13px] text-foreground placeholder:text-foreground/40 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-saffron-400"
+                />
+              </label>
+              <label className="block">
+                <span className="sr-only">Password</span>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="block w-full border border-foreground/30 bg-background px-3 py-2.5 font-mono text-[13px] text-foreground placeholder:text-foreground/40 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-saffron-400"
+                />
+              </label>
+              {error && (
+                <p className="font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
+                  {error}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex w-full items-center justify-center gap-2 border border-foreground bg-foreground px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-background transition-colors hover:bg-saffron-400 hover:text-foreground disabled:opacity-50"
+              >
+                {submitting ? 'Signing in…' : 'Sign in →'}
+              </button>
+              <p className="font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/45">
+                Default: demo@example.com / demo. Set GOOGLE_CLIENT_ID +
+                GOOGLE_CLIENT_SECRET to enable OAuth.
+              </p>
+            </form>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

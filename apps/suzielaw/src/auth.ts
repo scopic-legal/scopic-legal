@@ -26,9 +26,24 @@ export function createSessionMiddleware(): RequestHandler {
   });
 }
 
+/**
+ * Dev-only bypass: when SUZIELAW_AUTH_BYPASS=true, requireAuth and
+ * getSessionUser pretend the demo user is always logged in. Useful when you
+ * want to browse the app without a session cookie (e.g. taking screenshots).
+ * MUST NOT be enabled in production — leaks the demo identity to any caller.
+ */
+function bypassUser(): SessionUser | null {
+  if (process.env.SUZIELAW_AUTH_BYPASS !== 'true') return null;
+  return {
+    email: config.demo.email,
+    name: config.demo.name,
+    role: config.demo.role,
+  };
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   // cookie-session attaches req.session
-  const user = (req.session as { user?: SessionUser } | null)?.user;
+  const user = (req.session as { user?: SessionUser } | null)?.user ?? bypassUser();
   if (!user) {
     res.status(401).json({ error: 'unauthorized' });
     return;
@@ -37,7 +52,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 }
 
 export function getSessionUser(req: Request): SessionUser | null {
-  return (req.session as { user?: SessionUser } | null)?.user ?? null;
+  return (req.session as { user?: SessionUser } | null)?.user ?? bypassUser();
 }
 
 export function createAuthRouter(opts?: { budget?: TokenBudgetStore }): Router {

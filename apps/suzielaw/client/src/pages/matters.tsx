@@ -33,11 +33,6 @@ import {
   Input,
   Label,
   LoadingState,
-  PageHeader,
-  PageHeaderActions,
-  PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderTitle,
   PendingButton,
   Switch,
   Textarea,
@@ -48,11 +43,13 @@ import { useMatters, type Matter } from '../hooks/use-matters.js';
 import { ShareDialog } from '../components/share-dialog.js';
 
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return new Date(ms)
+    .toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    })
+    .toUpperCase();
 }
 
 interface NewMatterDialogProps {
@@ -360,29 +357,37 @@ export function MattersPage() {
 
   return (
     <>
-      <PageHeader>
-        <PageHeaderContent>
-          <PageHeaderTitle>Matters</PageHeaderTitle>
-          <PageHeaderDescription>
-            Group documents, chats, and reviews under a matter.
-          </PageHeaderDescription>
-        </PageHeaderContent>
-        <PageHeaderActions>
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-            <Switch
-              checked={includeArchived}
-              onCheckedChange={setIncludeArchived}
-              aria-label="Show archived matters"
-            />
-            <span>Show archived</span>
-          </label>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            New matter
-          </Button>
-        </PageHeaderActions>
-      </PageHeader>
-      <AppShellContent className="px-6 pt-6 pb-12">
+      <div className="border-b border-foreground/15 px-8 pb-6 pt-8">
+        <div className="flex items-end justify-between gap-6">
+          <div>
+            <div className="label-mono text-foreground/50">Docket</div>
+            <h1 className="mt-2 font-display text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold leading-[1] tracking-[-0.02em] text-foreground">
+              Matters.
+            </h1>
+            <p className="mt-3 max-w-md font-serif text-[15px] italic text-foreground/65">
+              Group documents, chats, and reviews under a matter.
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="inline-flex cursor-pointer items-center gap-2 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/55">
+              <Switch
+                checked={includeArchived}
+                onCheckedChange={setIncludeArchived}
+                aria-label="Show archived matters"
+              />
+              <span>Show archived</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setDialogOpen(true)}
+              className="inline-flex h-9 items-center gap-2 border border-foreground bg-foreground px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-background hover:bg-saffron-400 hover:text-foreground"
+            >
+              <Plus className="size-3" aria-hidden /> New matter
+            </button>
+          </div>
+        </div>
+      </div>
+      <AppShellContent className="px-8 pt-6 pb-12">
         {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
         {loading ? (

@@ -16,6 +16,7 @@ import {
   cn,
   usePersonas,
   useSelectedPersona,
+  useTheme,
 } from '@teamsuzie/ui';
 import { Protected } from './components/protected.js';
 import { useAssistantChats } from './hooks/use-assistant-chats.js';
@@ -101,10 +102,64 @@ function AssistantNavLink({
   );
 }
 
-function Wordmark({ title }: { title: string }) {
+/**
+ * Bauhaus theme toggle — inline because the sidebar is inverted and the
+ * generic ThemeToggle component is styled for non-inverted surfaces. Three
+ * letters, hairline border, saffron active fill.
+ */
+function InvertedThemeToggle() {
+  const [theme, setTheme] = useTheme();
+  const options: { value: 'light' | 'system' | 'dark'; label: string }[] = [
+    { value: 'light', label: 'L' },
+    { value: 'system', label: 'S' },
+    { value: 'dark', label: 'D' },
+  ];
   return (
-    <div className="flex items-center">
-      <span className="text-base font-semibold tracking-tight">{title}</span>
+    <div className="inline-flex items-center border border-background/20" role="radiogroup" aria-label="Color theme">
+      {options.map((opt) => {
+        const active = theme === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => setTheme(opt.value)}
+            title={`${opt.value[0].toUpperCase() + opt.value.slice(1)} theme`}
+            className={cn(
+              'h-5 w-6 font-mono text-[10px] leading-none transition-colors',
+              active
+                ? 'bg-saffron-400 text-ink-900'
+                : 'text-background/60 hover:bg-background/10 hover:text-background',
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Wordmark({ title }: { title: string }) {
+  // Bauhaus two-line wordmark: "SUZIE" on top, a hairline rule, then the
+  // category ("LAW") below. Geometric, confident, no decorative flourish.
+  const parts = title.toUpperCase().split(' ');
+  const head = parts.slice(0, parts.length - 1).join(' ') || parts[0] || 'SUZIE';
+  const tail = parts.length > 1 ? parts[parts.length - 1] : '';
+  return (
+    <div className="flex flex-col leading-none text-background">
+      <span className="font-display text-[1.05rem] font-bold tracking-[-0.02em]">
+        {head}
+      </span>
+      {tail && (
+        <>
+          <span className="my-1.5 inline-block h-px w-7 bg-background/60" aria-hidden />
+          <span className="font-display text-[1.05rem] font-bold tracking-[-0.02em]">
+            {tail}
+          </span>
+        </>
+      )}
     </div>
   );
 }
@@ -196,13 +251,31 @@ export default function App() {
         element={
           <Protected user={session.user} loading={session.loading}>
             <AppShell>
-              <Sidebar>
-                <SidebarHeader>
+              {/* Bauhaus sidebar shell — ink-black block, ivory type, saffron
+                  active marker. The upstream Sidebar primitive accepts a
+                  className override so we don't have to fork it. */}
+              <Sidebar className="w-64 border-r-0 bg-foreground text-background">
+                <SidebarHeader className="h-auto px-5 pb-6 pt-6">
                   <Wordmark title={title} />
                 </SidebarHeader>
-                <SidebarNav>
+                <div className="mx-5 mb-4 h-px bg-background/15" aria-hidden />
+                <SidebarNav className="px-3">
                   {nav.map((item) => (
-                    <SidebarNavItem key={item.label} asChild>
+                    <SidebarNavItem
+                      key={item.label}
+                      asChild
+                      className={cn(
+                        // IBM Plex Sans (sans, not display) at 600 — quieter
+                        // than the previous Archivo Black, still bauhaus.
+                        'group relative my-0.5 rounded-none px-4 py-1.5 font-sans text-[12px] font-semibold uppercase tracking-[0.12em]',
+                        // Override the upstream muted/foreground rules so the row
+                        // reads correctly on the ink-black ground.
+                        'text-background/60 hover:bg-background/5 hover:text-background',
+                        // Active row gets a saffron leading bar and white type.
+                        'aria-[current=page]:bg-transparent aria-[current=page]:text-background aria-[current=page]:shadow-none',
+                        'aria-[current=page]:before:absolute aria-[current=page]:before:left-0 aria-[current=page]:before:top-1/2 aria-[current=page]:before:h-5 aria-[current=page]:before:w-1 aria-[current=page]:before:-translate-y-1/2 aria-[current=page]:before:bg-saffron-400',
+                      )}
+                    >
                       {item.label === 'Assistant' ? (
                         <AssistantNavLink to={item.to} label={item.label} />
                       ) : (
@@ -213,39 +286,70 @@ export default function App() {
                     </SidebarNavItem>
                   ))}
                 </SidebarNav>
-                <SidebarFooter>
-                  <Button
-                    variant="outline"
+
+                <SidebarFooter className="border-t border-background/15 px-5 py-4 text-background">
+                  {/* Persona switcher — looks like a small "stamped" card */}
+                  <button
+                    type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="mb-2 h-auto w-full justify-start gap-2 px-2 py-1.5 text-left font-normal"
                     title="Switch persona"
+                    className="mb-3 flex w-full items-center gap-3 border border-background/20 bg-transparent px-3 py-2 text-left transition-colors hover:border-saffron-400 hover:bg-background/5"
                   >
                     <PersonaAvatar persona={selectedPersona} size="xs" />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-medium text-foreground">
+                      <div className="truncate text-[11px] font-semibold uppercase tracking-[0.12em] text-background">
                         {selectedPersona ? selectedPersona.name : 'Default Counsel'}
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        Click to switch
+                      <div className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-background/50">
+                        Switch persona →
                       </div>
                     </div>
-                  </Button>
-                  <SidebarNavItem asChild>
+                  </button>
+
+                  <SidebarNavItem
+                    asChild
+                    className={cn(
+                      'rounded-none px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.12em]',
+                      'text-background/60 hover:bg-background/5 hover:text-background',
+                      'aria-[current=page]:bg-transparent aria-[current=page]:text-background aria-[current=page]:shadow-none',
+                    )}
+                  >
                     <NavLink to="/settings">Settings</NavLink>
                   </SidebarNavItem>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <StatusDot name={agentName} state={statusState} />
-                    <Button
+
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'inline-block size-2 rounded-full',
+                          statusState === 'online'
+                            ? 'bg-saffron-400'
+                            : statusState === 'offline'
+                              ? 'bg-destructive'
+                              : 'bg-background/40',
+                        )}
+                      />
+                      <span className="font-mono text-[10px] uppercase tracking-[0.10em] text-background/60">
+                        {agentName}
+                      </span>
+                    </div>
+                    <button
                       type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-xs"
                       onClick={() => {
                         void session.logout().then(() => navigate('/login', { replace: true }));
                       }}
+                      className="font-mono text-[10px] uppercase tracking-[0.10em] text-background/60 underline-offset-4 hover:text-background hover:underline"
                     >
                       Sign out
-                    </Button>
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.10em] text-background/40">
+                      Theme
+                    </span>
+                    <InvertedThemeToggle />
                   </div>
                 </SidebarFooter>
               </Sidebar>

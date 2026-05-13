@@ -1,0 +1,51 @@
+- generic [ref=e3]:
+  - complementary "Sidebar" [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: SUZIE
+      - generic [ref=e9]: LAW
+    - navigation [ref=e11]:
+      - link "Assistant" [ref=e12] [cursor=pointer]:
+        - /url: /c/01c493c2-9e51-4eab-b9cc-55c7082b3911
+      - link "Matters" [ref=e13] [cursor=pointer]:
+        - /url: /matters
+      - link "Library" [ref=e14] [cursor=pointer]:
+        - /url: /library
+      - link "Personas" [ref=e15] [cursor=pointer]:
+        - /url: /personas
+      - link "History" [ref=e16] [cursor=pointer]:
+        - /url: /history
+      - link "Admin" [ref=e17] [cursor=pointer]:
+        - /url: /admin
+    - generic [ref=e18]:
+      - button "· Default Counsel Switch persona →" [ref=e19]:
+        - generic [ref=e20]: ·
+        - generic [ref=e21]:
+          - generic [ref=e22]: Default Counsel
+          - generic [ref=e23]: Switch persona →
+      - link "Settings" [ref=e24] [cursor=pointer]:
+        - /url: /settings
+      - generic [ref=e25]:
+        - generic [ref=e28]: Counsel
+        - button "Sign out" [ref=e29]
+      - generic [ref=e30]:
+        - generic [ref=e31]: Theme
+        - radiogroup "Color theme" [ref=e32]:
+          - radio "L" [ref=e33]
+          - radio "S" [checked] [ref=e34]
+          - radio "D" [ref=e35]
+  - main [ref=e36]:
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]: Docket
+        - heading "Matters." [level=1] [ref=e41]
+        - paragraph [ref=e42]: Group documents, chats, and reviews under a matter.
+      - generic [ref=e43]:
+        - generic [ref=e44] [cursor=pointer]:
+          - switch "Show archived matters" [ref=e45]
+          - generic [ref=e46]: Show archived
+        - button "New matter" [ref=e47]:
+          - img [ref=e48]
+          - text: New matter
+    - status [ref=e50]:
+      - img [ref=e51]
+      - generic [ref=e53]: Loading matters…

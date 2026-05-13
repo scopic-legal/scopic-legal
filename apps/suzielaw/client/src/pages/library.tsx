@@ -2,26 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AppShellContent,
-  Button,
+  cn,
   EmptyState,
   EmptyStateDescription,
   EmptyStateTitle,
   EyeOff,
   History,
   LoadingState,
-  PageHeader,
-  PageHeaderActions,
-  PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderTitle,
   Pagination,
   Pencil,
   Plus,
-  PromptCard,
-  PromptCardDescription,
-  PromptCardTag,
-  PromptCardTags,
-  PromptCardTitle,
   RowActions,
   Select,
   SelectContent,
@@ -169,32 +159,68 @@ export function LibraryPage() {
 
   return (
     <>
-      <PageHeader>
-        <PageHeaderContent>
-          <PageHeaderTitle>Library</PageHeaderTitle>
-          <PageHeaderDescription>
-            {systemCount} built-in · {userCount} saved.
-          </PageHeaderDescription>
-        </PageHeaderContent>
-        <PageHeaderActions>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={wf.workflows.length === 0}>
-            Export workflows
-          </Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            Create a workflow
-          </Button>
-        </PageHeaderActions>
-      </PageHeader>
-      <AppShellContent className="px-6 pt-6 pb-12">
+      {/* Custom Bauhaus header replaces the generic PageHeader so we can use
+          display type and decorative rules. */}
+      <div className="border-b border-foreground/15 px-8 pb-6 pt-8">
+        <div className="flex items-end justify-between gap-6">
+          <div>
+            <div className="label-mono text-foreground/50">Catalog</div>
+            <h1 className="mt-2 font-display text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold leading-[1] tracking-[-0.02em] text-foreground">
+              Library.
+            </h1>
+            <p className="mt-3 max-w-md font-serif text-[15px] italic text-foreground/65">
+              <span className="not-italic font-mono uppercase tracking-[0.10em] text-foreground/45">
+                {systemCount.toString().padStart(3, '0')}
+              </span>{' '}
+              built-in workflows ·{' '}
+              <span className="not-italic font-mono uppercase tracking-[0.10em] text-foreground/45">
+                {userCount.toString().padStart(3, '0')}
+              </span>{' '}
+              saved.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={wf.workflows.length === 0}
+              className="inline-flex h-9 items-center border border-foreground/30 bg-transparent px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground hover:bg-foreground/[0.04] disabled:opacity-40"
+            >
+              Export ↓
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex h-9 items-center gap-2 border border-foreground bg-foreground px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-background hover:bg-saffron-400 hover:text-foreground"
+            >
+              <Plus className="size-3" aria-hidden /> Create workflow
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <AppShellContent className="px-8 pt-6 pb-12">
         <Tabs defaultValue="prompts">
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <TabsList>
-              <TabsTrigger value="prompts">Workflows</TabsTrigger>
-              <TabsTrigger value="background">Background jobs</TabsTrigger>
+          <div className="mb-6 flex items-center justify-between gap-4 border-b border-foreground/10 pb-3">
+            <TabsList className="bg-transparent">
+              <TabsTrigger
+                value="prompts"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 data-[state=active]:border-saffron-400 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              >
+                Workflows
+              </TabsTrigger>
+              <TabsTrigger
+                value="background"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 data-[state=active]:border-saffron-400 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+              >
+                Background jobs
+              </TabsTrigger>
             </TabsList>
             <Select value={areaFilter} onValueChange={setAreaFilter}>
-              <SelectTrigger className="w-56" aria-label="Filter by practice area">
+              <SelectTrigger
+                className="h-9 w-60 rounded-none border-foreground/30 bg-transparent font-mono text-[10px] uppercase tracking-[0.10em]"
+                aria-label="Filter by practice area"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -210,7 +236,9 @@ export function LibraryPage() {
 
           <TabsContent value="prompts">
             {(wf.error || actionError) && (
-              <p className="mb-3 text-xs text-destructive">{wf.error || actionError}</p>
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
+                {wf.error || actionError}
+              </p>
             )}
             {wf.loading ? (
               <LoadingState>Loading library…</LoadingState>
@@ -223,32 +251,61 @@ export function LibraryPage() {
               </EmptyState>
             ) : (
               <>
-                <div className="grid auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {pagedWorkflows.map((workflow) => {
+                {/* Workflow grid — hairline-bordered tiles. The leading
+                    "INDEX / TOTAL" mono caption gives the bauhaus engineering
+                    feel; the practice-area chip uses saffron when filtered. */}
+                <div className="grid auto-rows-fr gap-px bg-foreground/15 sm:grid-cols-2 lg:grid-cols-3">
+                  {pagedWorkflows.map((workflow, idx) => {
                     const isUser = workflow.source === 'user';
+                    const absoluteIndex = pageStart + idx + 1;
                     return (
-                      <div key={workflow.id} className="group relative h-full">
-                        <PromptCard
+                      <div key={workflow.id} className="group relative h-full bg-background">
+                        <button
+                          type="button"
                           onClick={() => openInAssistant(workflow)}
+                          className="flex h-full w-full flex-col items-start gap-2 px-5 py-5 text-left transition-colors hover:bg-foreground/[0.025] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-saffron-400"
                         >
-                          <PromptCardTitle>{workflow.name}</PromptCardTitle>
-                          <PromptCardDescription>
-                            {workflow.description}
-                          </PromptCardDescription>
-                          <PromptCardTags>
+                          <div className="flex w-full items-center justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/40">
+                            <span>
+                              {String(absoluteIndex).padStart(3, '0')} /{' '}
+                              {String(filteredWorkflows.length).padStart(3, '0')}
+                            </span>
                             {isUser && (
-                              <PromptCardTag className="bg-foreground text-background">
+                              <span className="bg-foreground px-1.5 py-0.5 text-background">
                                 Saved
-                              </PromptCardTag>
+                              </span>
                             )}
+                          </div>
+                          <div className="font-display text-[15px] leading-tight tracking-tight text-foreground">
+                            {workflow.name}
+                          </div>
+                          <div className="line-clamp-3 text-[13px] leading-relaxed text-foreground/65">
+                            {workflow.description}
+                          </div>
+                          <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
                             {workflow.practiceAreas.map((id) => (
-                              <PromptCardTag key={id}>
+                              <span
+                                key={id}
+                                className={cn(
+                                  'inline-flex items-center font-mono text-[9px] uppercase tracking-[0.10em]',
+                                  'border-l-2 pl-1.5',
+                                  areaFilter === id
+                                    ? 'border-saffron-400 text-foreground'
+                                    : 'border-foreground/25 text-foreground/55',
+                                )}
+                              >
                                 {practiceAreaLabel(id)}
-                              </PromptCardTag>
+                              </span>
                             ))}
-                          </PromptCardTags>
-                        </PromptCard>
-                        <div className="absolute right-1.5 top-1.5 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100">
+                          </div>
+                          <span
+                            aria-hidden
+                            className="absolute bottom-3 right-4 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/0 transition-colors group-hover:text-saffron-600"
+                          >
+                            Open →
+                          </span>
+                        </button>
+                        <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100">
                           <span onClick={(e) => e.stopPropagation()}>
                             <RowActions
                               triggerLabel={`Actions for ${workflow.name}`}

@@ -1,0 +1,5 @@
+[      53ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:17502/node_modules/.vite/deps/react-dom_client.js?v=13b89a97:20102
+[      80ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:17502/api/personas?source=all:0
+[      80ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:17502/api/assistant/chats:0
+[      82ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:17502/api/personas?source=all:0
+[      82ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:17502/api/assistant/chats:0

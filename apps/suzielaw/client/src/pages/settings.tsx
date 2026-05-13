@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import {
+  AppShellContent,
   LocalModelConfigDialog,
   ModelPickerCard,
-  SettingsLayout,
   useSelectedModel,
   type ModelOption,
 } from '@teamsuzie/ui';
@@ -56,19 +56,32 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
     : null;
 
   return (
-    <SettingsLayout description="Model picker and provider keys.">
-      <ModelPickerCard
-        models={models}
-        selected={selectedModel}
-        onSelect={setSelectedModel}
-        title="Pick the model that powers Counsel"
-        hint="Changes apply on the next message. The demo-budget default is always available; other cloud models appear once you set a provider key below."
-        onConfigure={(model) => setConfiguringModel(model)}
-      />
+    <>
+      <div className="border-b border-foreground/15 px-8 pb-6 pt-8">
+        <div className="label-mono text-foreground/50">Configuration</div>
+        <h1 className="mt-2 font-display text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold leading-[1] tracking-[-0.02em] text-foreground">
+          Settings.
+        </h1>
+        <p className="mt-3 font-serif text-[15px] italic text-foreground/65">
+          Model picker and provider keys.
+        </p>
+      </div>
+      <AppShellContent className="px-8 pt-6 pb-12">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ModelPickerCard
+            models={models}
+            selected={selectedModel}
+            onSelect={setSelectedModel}
+            title="Pick the model that powers Counsel"
+            hint="Changes apply on the next message. The demo-budget default is always available; other cloud models appear once you set a provider key below."
+            onConfigure={(model) => setConfiguringModel(model)}
+          />
 
-      {cloudProviders.length > 0 && (
-        <ProviderKeysCard providers={cloudProviders} />
-      )}
+          {cloudProviders.length > 0 && (
+            <ProviderKeysCard providers={cloudProviders} />
+          )}
+        </div>
+      </AppShellContent>
 
       {configuringModel && (
         <LocalModelConfigDialog
@@ -93,6 +106,6 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
           }
         />
       )}
-    </SettingsLayout>
+    </>
   );
 }

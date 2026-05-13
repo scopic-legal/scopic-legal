@@ -169,7 +169,7 @@ function MessageItem({
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl bg-foreground px-4 py-2.5 text-[15px] leading-relaxed text-background">
+        <div className="max-w-[80%] border border-foreground bg-foreground px-4 py-2.5 text-[15px] leading-relaxed text-background">
           <div className="whitespace-pre-wrap">{message.content}</div>
         </div>
       </div>
@@ -184,7 +184,7 @@ function MessageItem({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="text-[11px] font-medium text-muted-foreground">
+      <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/45">
         {agentName}
       </div>
       {showTyping ? (
@@ -225,21 +225,71 @@ function Greeting({
   onSelect: (prompt: string) => void;
 }) {
   const salutation = useMemo(() => greetingFor(new Date()), []);
+  const dateLabel = useMemo(() => {
+    const d = new Date();
+    return d
+      .toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+      .toUpperCase();
+  }, []);
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col justify-center px-6 py-16">
-      <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-        {salutation}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        How can {name} help today?
-      </p>
-      <div className="mt-10 grid gap-3 sm:grid-cols-2">
-        {prompts.map((card) => (
-          <PromptCard key={card.title} onClick={() => onSelect(card.prompt)}>
-            <PromptCardTitle>{card.title}</PromptCardTitle>
-            <PromptCardDescription>{card.subtitle}</PromptCardDescription>
-          </PromptCard>
-        ))}
+    <div className="relative mx-auto w-full max-w-5xl px-8 py-10">
+      {/* Faint vertical grid rules behind the hero — bauhaus structural hint */}
+      <div className="pointer-events-none absolute inset-0 grid-rules opacity-60" aria-hidden />
+
+      <div className="relative">
+        <div className="stagger-in stagger-in-1 flex items-center gap-3 text-foreground/50">
+          <span className="label-mono">{dateLabel}</span>
+          <span className="inline-block h-px flex-1 bg-foreground/15" aria-hidden />
+        </div>
+
+        <h1 className="stagger-in stagger-in-2 mt-5 display-hero text-[clamp(2rem,5vw,3.75rem)] text-foreground">
+          {salutation.toUpperCase()}.
+        </h1>
+
+        <p className="stagger-in stagger-in-3 mt-3 max-w-xl font-serif text-lg italic text-foreground/70">
+          How can <span className="not-italic font-medium text-foreground">{name}</span> help today?
+        </p>
+
+        {/* Quick-start grid — hairline rules instead of card borders. Each
+            cell is a clickable region with a saffron leading rule that
+            animates in on hover. */}
+        <div className="stagger-in stagger-in-4 mt-8 grid grid-cols-1 border-t border-foreground/15 sm:grid-cols-2">
+          {prompts.map((card, idx) => (
+            <button
+              key={card.title}
+              type="button"
+              onClick={() => onSelect(card.prompt)}
+              className={cn(
+                'group relative flex flex-col items-start gap-2 border-b border-foreground/15 px-6 py-7 text-left transition-colors',
+                'hover:bg-foreground/[0.025]',
+                // Right-side hairline divider on sm+ between columns 1 & 2
+                idx % 2 === 0 ? 'sm:border-r sm:border-foreground/15' : '',
+              )}
+            >
+              {/* Saffron index numeral — bauhaus loves indexing */}
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/40">
+                {String(idx + 1).padStart(2, '0')} / {String(prompts.length).padStart(2, '0')}
+              </span>
+              <span className="text-[15px] font-semibold leading-tight tracking-tight text-foreground">
+                {card.title}
+              </span>
+              <span className="text-[13px] leading-relaxed text-foreground/60">
+                {card.subtitle}
+              </span>
+              <span
+                aria-hidden
+                className="mt-2 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/40 transition-colors group-hover:text-saffron-600"
+              >
+                Start <span aria-hidden>→</span>
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -799,25 +849,31 @@ export function AssistantPage({
   return (
     <div className="flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
-      <header className="flex h-14 items-center justify-between border-b border-border px-5">
+      <header className="flex h-14 items-center justify-between border-b border-foreground/15 bg-background px-6">
         <button
           type="button"
           onClick={onOpenPicker}
-          className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-accent"
+          className="group flex items-center gap-3 px-1 py-1 transition-colors"
           title="Switch persona"
         >
           <PersonaAvatar persona={persona} size="xs" />
-          <div className="text-left">
-            <div className="text-sm font-medium text-foreground">{displayName}</div>
-            {persona && (
-              <div className="text-[10px] text-muted-foreground">{persona.description}</div>
-            )}
+          <div className="text-left leading-tight">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.12em] text-foreground">
+              {displayName}
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/50">
+              {persona ? 'Persona active · switch →' : 'Default Counsel · switch →'}
+            </div>
           </div>
         </button>
         {(messages.length > 0 || chatId) && (
-          <Button size="sm" variant="outline" onClick={() => void newChat()}>
-            New chat
-          </Button>
+          <button
+            type="button"
+            onClick={() => void newChat()}
+            className="font-mono text-[11px] uppercase tracking-[0.14em] text-foreground/60 underline-offset-4 hover:text-foreground hover:underline"
+          >
+            New chat →
+          </button>
         )}
       </header>
 
@@ -835,8 +891,13 @@ export function AssistantPage({
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-8">
             {chatName && (
-              <div className="border-b border-border pb-3 text-xs text-muted-foreground">
-                {chatName}
+              <div className="flex items-center gap-3 border-b border-foreground/15 pb-3">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/45">
+                  Chat /
+                </span>
+                <span className="text-[13px] font-semibold uppercase tracking-[0.06em] text-foreground">
+                  {chatName}
+                </span>
               </div>
             )}
             {messages.map((message, idx) => (
@@ -856,9 +917,13 @@ export function AssistantPage({
         )}
       </div>
 
-      <div className="border-t border-border bg-background px-5 py-4">
+      <div className="border-t border-foreground/15 bg-background px-6 py-5">
         <div className="mx-auto w-full max-w-3xl">
-          {error && <p className="mb-2 text-xs text-destructive">{error}</p>}
+          {error && (
+            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.10em] text-destructive">
+              {error}
+            </p>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -871,8 +936,8 @@ export function AssistantPage({
             }}
           />
           {prefillLabel && (
-            <div className="mb-2 inline-flex items-center gap-2 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
-              <span>From Library:</span>
+            <div className="mb-2 inline-flex items-center gap-2 border border-foreground/20 bg-saffron-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground">
+              <span className="text-foreground/60">From Library /</span>
               <span className="font-medium text-foreground">{prefillLabel}</span>
               <button
                 type="button"
@@ -880,28 +945,30 @@ export function AssistantPage({
                   setInput('');
                   setPrefillLabel(null);
                 }}
-                className="ml-1 text-muted-foreground hover:text-foreground"
+                className="ml-1 text-foreground/60 hover:text-foreground"
                 aria-label="Clear prefilled prompt"
               >
                 ×
               </button>
             </div>
           )}
-          <div className="rounded-2xl border border-border bg-card shadow-sm transition-all focus-within:ring-2 focus-within:ring-ring/30 focus-within:border-foreground/30 focus-within:shadow-md">
+          <div className="border border-foreground/25 bg-card transition-all focus-within:border-foreground focus-within:ring-1 focus-within:ring-saffron-400">
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 border-b border-border px-3 pb-2 pt-2.5">
+              <div className="flex flex-wrap gap-1.5 border-b border-foreground/15 px-3 pb-2 pt-2.5">
                 {attachments.map((att) => (
                   <span
                     key={att.id}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[11px] text-foreground"
+                    className="inline-flex items-center gap-1.5 border border-foreground/20 bg-background px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em] text-foreground"
                     title={`${att.mimeType} · ${humanSize(att.size)}`}
                   >
-                    <span className="max-w-[180px] truncate font-medium">{att.name}</span>
-                    <span className="text-muted-foreground">{humanSize(att.size)}</span>
+                    <span className="max-w-[180px] truncate normal-case tracking-normal font-sans">
+                      {att.name}
+                    </span>
+                    <span className="text-foreground/55">{humanSize(att.size)}</span>
                     <button
                       type="button"
                       onClick={() => removeAttachment(att.id)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-foreground/55 hover:text-destructive"
                       aria-label={`Remove ${att.name}`}
                     >
                       ×
@@ -923,61 +990,55 @@ export function AssistantPage({
                   void sendMessage();
                 }
               }}
-              placeholder={`Message ${agentName}`}
+              placeholder={`Message ${agentName} —`}
               disabled={isStreaming}
-              className="block w-full min-h-16 resize-none border-0 bg-transparent px-4 pt-3 text-[15px] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              className="block w-full min-h-16 resize-none border-0 bg-transparent px-4 pt-3 text-[15px] outline-none placeholder:font-mono placeholder:text-[12px] placeholder:uppercase placeholder:tracking-[0.10em] placeholder:text-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-              <div className="flex items-center gap-2">
-                <Button
+            <div className="flex items-center justify-between border-t border-foreground/10 px-3 pb-2 pt-2">
+              <div className="flex items-center gap-1">
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading || isStreaming}
-                  className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
+                  className="inline-flex h-7 items-center gap-1.5 px-2 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/60 hover:bg-foreground/[0.04] hover:text-foreground disabled:opacity-50"
                   aria-label="Attach files"
                 >
-                  <Paperclip className="size-4" aria-hidden />
-                  <span className="text-xs">{uploading ? 'Uploading…' : 'Files'}</span>
-                </Button>
-                <Button
+                  <Paperclip className="size-3.5" aria-hidden />
+                  {uploading ? 'Uploading…' : 'Files'}
+                </button>
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={() => setWorkflowPickerOpen(true)}
                   disabled={isStreaming}
-                  className="h-8 gap-1.5 px-2 text-muted-foreground hover:text-foreground"
+                  className="inline-flex h-7 items-center gap-1.5 px-2 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/60 hover:bg-foreground/[0.04] hover:text-foreground disabled:opacity-50"
                   aria-label="Run a workflow"
                 >
-                  <Sparkles className="size-4" aria-hidden />
-                  <span className="text-xs">Workflow</span>
-                </Button>
-                <p className="hidden text-xs text-muted-foreground sm:inline">
-                  Enter sends · Shift+Enter newline
+                  <Sparkles className="size-3.5" aria-hidden />
+                  Workflow
+                </button>
+                <p className="ml-3 hidden font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/35 sm:inline">
+                  ↵ sends · ⇧↵ newline
                 </p>
               </div>
               {isStreaming ? (
-                <Button
-                  size="sm"
+                <button
                   type="button"
-                  variant="outline"
                   onClick={stopStreaming}
-                  className="h-8 rounded-full px-4"
+                  className="inline-flex h-7 items-center gap-1.5 border border-foreground bg-background px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground hover:bg-foreground hover:text-background"
                   aria-label="Stop streaming"
                 >
-                  <Square className="size-3 fill-current" aria-hidden />
+                  <Square className="size-2.5 fill-current" aria-hidden />
                   Stop
-                </Button>
+                </button>
               ) : (
-                <Button
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => void sendMessage()}
                   disabled={!input.trim() && attachments.length === 0}
-                  className="h-8 rounded-full px-4"
+                  className="inline-flex h-7 items-center gap-1.5 bg-foreground px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-background transition-colors hover:bg-saffron-400 hover:text-foreground disabled:cursor-not-allowed disabled:bg-foreground/30"
                 >
-                  Send
-                </Button>
+                  Send <span aria-hidden>→</span>
+                </button>
               )}
             </div>
           </div>

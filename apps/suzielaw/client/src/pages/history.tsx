@@ -1,28 +1,25 @@
 import { useNavigate } from 'react-router-dom';
 import {
   AppShellContent,
-  Button,
   EmptyState,
   EmptyStateDescription,
   EmptyStateTitle,
   LoadingState,
-  PageHeader,
-  PageHeaderContent,
-  PageHeaderDescription,
-  PageHeaderTitle,
   Trash2,
   useConfirm,
 } from '@teamsuzie/ui';
 import { useAssistantChats } from '../hooks/use-assistant-chats.js';
 
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return new Date(ms)
+    .toLocaleString('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    .toUpperCase();
 }
 
 export function HistoryPage() {
@@ -48,19 +45,22 @@ export function HistoryPage() {
 
   return (
     <>
-      <PageHeader>
-        <PageHeaderContent>
-          <PageHeaderTitle>History</PageHeaderTitle>
-          <PageHeaderDescription>
-            Recent assistant conversations.
-          </PageHeaderDescription>
-        </PageHeaderContent>
-      </PageHeader>
-      <AppShellContent className="px-6 pt-6 pb-12">
+      <div className="border-b border-foreground/15 px-8 pb-6 pt-8">
+        <div className="label-mono text-foreground/50">Archive</div>
+        <h1 className="mt-2 font-display text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold leading-[1] tracking-[-0.02em] text-foreground">
+          History.
+        </h1>
+        <p className="mt-3 font-serif text-[15px] italic text-foreground/65">
+          Recent assistant conversations.
+        </p>
+      </div>
+      <AppShellContent className="px-8 pt-6 pb-12">
         {loading ? (
           <LoadingState>Loading chats…</LoadingState>
         ) : error ? (
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
+            {error}
+          </p>
         ) : chats.length === 0 ? (
           <EmptyState>
             <EmptyStateTitle>No conversations yet</EmptyStateTitle>
@@ -69,35 +69,37 @@ export function HistoryPage() {
             </EmptyStateDescription>
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-            {chats.map((chat) => (
+          <ul className="border-t border-foreground/15">
+            {chats.map((chat, idx) => (
               <li
                 key={chat.id}
-                className="flex items-center justify-between gap-3 px-4 py-3"
+                className="group flex items-center justify-between gap-3 border-b border-foreground/10 px-2 py-4 transition-colors hover:bg-foreground/[0.025]"
               >
                 <button
                   type="button"
                   onClick={() =>
                     navigate(`/c/${encodeURIComponent(chat.id)}`)
                   }
-                  className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
+                  className="flex min-w-0 flex-1 items-baseline gap-4 text-left"
                 >
-                  <span className="truncate text-sm font-medium text-foreground">
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/40">
+                    {String(idx + 1).padStart(3, '0')}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-display text-[14px] tracking-tight text-foreground">
                     {chat.name || 'New chat'}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/45">
                     {formatDate(chat.updatedAt)}
                   </span>
                 </button>
-                <Button
-                  size="sm"
-                  variant="ghost"
+                <button
+                  type="button"
                   onClick={() => void handleDelete(chat.id, chat.name)}
                   aria-label={`Delete ${chat.name}`}
-                  className="text-muted-foreground hover:text-destructive"
+                  className="ml-3 inline-flex size-7 items-center justify-center text-foreground/40 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                 >
                   <Trash2 className="size-4" aria-hidden />
-                </Button>
+                </button>
               </li>
             ))}
           </ul>

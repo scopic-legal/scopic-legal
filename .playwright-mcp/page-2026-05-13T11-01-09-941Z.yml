@@ -1,0 +1,426 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link "SUZIE LAW" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e8]: SUZIE LAW
+      - generic [ref=e9]:
+        - link "The case" [ref=e10] [cursor=pointer]:
+          - /url: "#case"
+        - link "How it works" [ref=e11] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "What it does" [ref=e12] [cursor=pointer]:
+          - /url: "#capabilities"
+        - link "Built on Team Suzie" [ref=e13] [cursor=pointer]:
+          - /url: https://teamsuzie.com
+          - text: Built on Team Suzie
+          - img [ref=e14]
+        - link "GitHub" [ref=e18] [cursor=pointer]:
+          - /url: https://github.com/firelex/suzielaw
+          - img [ref=e19]
+          - text: GitHub
+        - link "Build yours →" [ref=e22] [cursor=pointer]:
+          - /url: "#how-it-works"
+  - main [ref=e23]:
+    - generic [ref=e24]:
+      - button "Unmute video" [ref=e26]:
+        - img [ref=e27]
+      - generic [ref=e34]:
+        - generic [ref=e37]: Open-source legal AI · Built on Team Suzie with Scissero
+        - heading "VIBE CODING FOR LAWYERS." [level=1] [ref=e38]:
+          - generic [ref=e39]: VIBE CODING
+          - generic [ref=e41]: FOR LAWYERS.
+        - paragraph [ref=e42]: Don't rent a chatbot. Build agentic workflows you own. Start with Suzie Law.
+        - generic [ref=e43]:
+          - link "Fork on GitHub (Free)" [ref=e44] [cursor=pointer]:
+            - /url: https://github.com/firelex/suzielaw
+            - img [ref=e45]
+            - text: Fork on GitHub
+            - generic [ref=e48]: (Free)
+          - link "Try hosted — Free" [ref=e49] [cursor=pointer]:
+            - /url: https://app.suzielaw.com/login
+            - text: Try hosted — Free
+            - img [ref=e50]
+          - link "Read the docs" [ref=e52] [cursor=pointer]:
+            - /url: https://github.com/firelex/suzielaw#readme
+            - text: Read the docs
+            - img [ref=e53]
+    - generic [ref=e56]:
+      - generic [ref=e58]:
+        - paragraph [ref=e59]: 01/The case
+        - heading "Why open source matters" [level=2] [ref=e60]
+        - paragraph [ref=e61]: Suzie Law is an open-source alternative to closed legal AI assistants. It gives legal teams a capable baseline they can inspect and adapt, while leaving room for the deeper workflows that make each practice distinctive.
+      - generic [ref=e62]:
+        - generic [ref=e64]:
+          - img [ref=e66]
+          - generic [ref=e70]:
+            - heading "Baseline legal AI should be accessible" [level=3] [ref=e71]
+            - paragraph [ref=e72]: A serious legal AI workspace — assistant chat, document Q&A, drafting, structured review, and DOCX output — should not be locked inside closed platforms. Suzie Law ships that baseline as open-source code.
+        - generic [ref=e74]:
+          - img [ref=e76]
+          - generic [ref=e80]:
+            - heading "Real value is in agentic workflows" [level=3] [ref=e81]
+            - paragraph [ref=e82]: Drafting playbooks, deal checklists, obligations management, jurisdiction-specific review templates, post-signing tracking — the parts of legal practice that are specific to how your firm works. The longer your firm builds them, the more they compound.
+        - generic [ref=e84]:
+          - img [ref=e86]
+          - generic [ref=e90]:
+            - heading "That depth requires inspectable code" [level=3] [ref=e91]
+            - paragraph [ref=e92]: Agent workflows that match how your firm actually practices law mean controlling prompts, tool wiring, data shapes, output formats, and the agent's behavior at every step. That level of opinion belongs in software you can inspect, modify, and run.
+        - generic [ref=e94]:
+          - img [ref=e96]
+          - generic [ref=e99]:
+            - heading "AI-assisted development makes this practical" [level=3] [ref=e100]
+            - paragraph [ref=e101]: "Domain experts can now express product intent directly to AI coding assistants — Claude Code, Codex, Cursor — and turn legal workflow knowledge into working software. Suzie Law is the open-source starting point: the foundation, not the destination."
+    - generic [ref=e103]:
+      - generic [ref=e105]:
+        - paragraph [ref=e106]: 02/How it works
+        - heading "Three steps." [level=2] [ref=e107]
+        - paragraph [ref=e108]: Suzie Law is the legal vertical of Team Suzie, developed with Scissero. You fork it, change what you want, and run it.
+      - generic [ref=e109]:
+        - generic [ref=e112]:
+          - generic [ref=e113]:
+            - generic [ref=e114]: Step 01
+            - img [ref=e115]
+          - heading "Clone two repos" [level=3] [ref=e120]
+          - paragraph [ref=e121]: "Suzie Law and the Team Suzie platform are sibling clones. `git clone` both, run `pnpm install` in each, and the app links the platform packages directly. Node 20+, pnpm, Python 3.10+ for the document tools."
+        - generic [ref=e124]:
+          - generic [ref=e125]:
+            - generic [ref=e126]: Step 02
+            - img [ref=e127]
+          - heading "Edit the agent and prompts" [level=3] [ref=e132]
+          - paragraph [ref=e133]: Suzie Law ships Counsel, a legal assistant, plus a curated library of prompts and workflow templates — deposition analysis, OCG summaries, drafting starters. Edit the system prompt, personas, and workflows to match your firm.
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - generic [ref=e138]: Step 03
+            - img [ref=e139]
+          - heading "Run it locally — then make it yours" [level=3] [ref=e144]
+          - paragraph [ref=e145]: A bash dev-up script brings the app online for local use. You get Counsel chat, matter workspaces, document Q&A, drafting, tabular review, personas, and a workflow library. From there, wire in your own systems, templates, policies, and firm-specific tools.
+      - generic [ref=e147]:
+        - link "Fork on GitHub (Free)" [ref=e148] [cursor=pointer]:
+          - /url: https://github.com/firelex/suzielaw
+          - img [ref=e149]
+          - text: Fork on GitHub
+          - generic [ref=e152]: (Free)
+        - link "The platform underneath" [ref=e153] [cursor=pointer]:
+          - /url: https://teamsuzie.com
+          - text: The platform underneath
+          - img [ref=e154]
+    - generic [ref=e157]:
+      - generic [ref=e159]:
+        - paragraph [ref=e160]: 03/See it
+        - heading "A quick tour of what's inside" [level=2] [ref=e161]
+        - paragraph [ref=e162]: The surfaces a lawyer actually touches — chat, matter review, drafting, redlines, research, and the model picker. Every screenshot is the open-source app you can clone today.
+      - generic [ref=e163]:
+        - figure "Counsel — the chat Quick-start cards seed common asks (draft email, summarise document, build a chronology, extract change-of-control). Files + Workflow attach context inline. The active persona is one click away in the sidebar." [ref=e165]:
+          - generic [ref=e166]:
+            - img "Counsel — the chat"
+          - generic [ref=e167]:
+            - heading "Counsel — the chat" [level=3] [ref=e168]
+            - paragraph [ref=e169]: Quick-start cards seed common asks (draft email, summarise document, build a chronology, extract change-of-control). Files + Workflow attach context inline. The active persona is one click away in the sidebar.
+        - figure "12 practice-area personas Built-in Arbitration, Capital Markets, Employment, IP, Litigation, M&A, Investigations, and more — each with its own system prompt and tool subset. Roll your own without leaving the app." [ref=e171]:
+          - generic [ref=e172]:
+            - img "12 practice-area personas"
+          - generic [ref=e173]:
+            - heading "12 practice-area personas" [level=3] [ref=e174]
+            - paragraph [ref=e175]: Built-in Arbitration, Capital Markets, Employment, IP, Litigation, M&A, Investigations, and more — each with its own system prompt and tool subset. Roll your own without leaving the app.
+        - figure "160+ agentic workflows Recipes, not paste-and-pray prompts. DPIAs, discovery plans, complaint analyses, award-enforcement memos, judge financial-disclosure pulls. Filter by practice area; click a tile to seed the chat." [ref=e177]:
+          - generic [ref=e178]:
+            - img "160+ agentic workflows"
+          - generic [ref=e179]:
+            - heading "160+ agentic workflows" [level=3] [ref=e180]
+            - paragraph [ref=e181]: Recipes, not paste-and-pray prompts. DPIAs, discovery plans, complaint analyses, award-enforcement memos, judge financial-disclosure pulls. Filter by practice area; click a tile to seed the chat.
+        - figure "Tabular review across documents Rows are documents, columns are questions. Drop in a stack of side letters; every cell is the agent's grounded answer to the same question across the set." [ref=e183]:
+          - generic [ref=e184]:
+            - img "Tabular review across documents"
+          - generic [ref=e185]:
+            - heading "Tabular review across documents" [level=3] [ref=e186]
+            - paragraph [ref=e187]: Rows are documents, columns are questions. Drop in a stack of side letters; every cell is the agent's grounded answer to the same question across the set.
+        - figure "Every claim is clickable Inline citations on every answer jump to the highlighted passage in the source. No fabricated authorities, no \"trust me\" — proof is one click away." [ref=e189]:
+          - generic [ref=e190]:
+            - img "Every claim is clickable"
+          - generic [ref=e191]:
+            - heading "Every claim is clickable" [level=3] [ref=e192]
+            - paragraph [ref=e193]: Inline citations on every answer jump to the highlighted passage in the source. No fabricated authorities, no "trust me" — proof is one click away.
+        - figure "Legal research across 19 jurisdictions 22 official providers behind one tool surface — US (CourtListener + eCFR), UK, EU (EUR-Lex + CURIA), France (Légifrance + Judilibre), Germany, Spain, Italy, Austria, Switzerland, Council of Europe (HUDOC), Brazil, India, Australia, Netherlands, Ireland, Canada, Belgium, Japan, Mexico, Argentina. Counsel picks the right backend by jurisdiction and returns primary sources with direct links — no fabricated authorities." [ref=e195]:
+          - generic [ref=e196]:
+            - img "Legal research across 19 jurisdictions"
+          - generic [ref=e197]:
+            - heading "Legal research across 19 jurisdictions" [level=3] [ref=e198]
+            - paragraph [ref=e199]: 22 official providers behind one tool surface — US (CourtListener + eCFR), UK, EU (EUR-Lex + CURIA), France (Légifrance + Judilibre), Germany, Spain, Italy, Austria, Switzerland, Council of Europe (HUDOC), Brazil, India, Australia, Netherlands, Ireland, Canada, Belgium, Japan, Mexico, Argentina. Counsel picks the right backend by jurisdiction and returns primary sources with direct links — no fabricated authorities.
+        - figure "Drafting to DOCX, live Counsel proposes a TOC, fills section by section while keeping neighbours coherent, renders live in the side panel. Download as Markdown or as a styled .docx that opens in Word." [ref=e201]:
+          - generic [ref=e202]:
+            - img "Drafting to DOCX, live"
+          - generic [ref=e203]:
+            - heading "Drafting to DOCX, live" [level=3] [ref=e204]
+            - paragraph [ref=e205]: Counsel proposes a TOC, fills section by section while keeping neighbours coherent, renders live in the side panel. Download as Markdown or as a styled .docx that opens in Word.
+        - figure "Tracked-change redlines \"Redline this NDA from the buyer's perspective.\" Per-clause Accept/Reject cards in chat, inline ins/del preview in the side panel, exportable .docx with native Word tracked changes." [ref=e207]:
+          - generic [ref=e208]:
+            - img "Tracked-change redlines"
+          - generic [ref=e209]:
+            - heading "Tracked-change redlines" [level=3] [ref=e210]
+            - paragraph [ref=e211]: "\"Redline this NDA from the buyer's perspective.\" Per-clause Accept/Reject cards in chat, inline ins/del preview in the side panel, exportable .docx with native Word tracked changes."
+        - figure "Bring your own keys Pick the model that powers Counsel — Claude, GPT, Qwen, or your own local server. Plug in provider keys to bypass the demo budget and bill your own account." [ref=e213]:
+          - generic [ref=e214]:
+            - img "Bring your own keys"
+          - generic [ref=e215]:
+            - heading "Bring your own keys" [level=3] [ref=e216]
+            - paragraph [ref=e217]: Pick the model that powers Counsel — Claude, GPT, Qwen, or your own local server. Plug in provider keys to bypass the demo budget and bill your own account.
+    - generic [ref=e219]:
+      - generic [ref=e221]:
+        - paragraph [ref=e222]: 04/What it does
+        - heading "A category-standard baseline" [level=2] [ref=e223]
+        - paragraph [ref=e224]: Suzie Law gives you the core capabilities lawyers expect from a modern legal AI workspace — Counsel chat, document analysis, drafting, structured review, reusable workflows, and DOCX output — as open-source code you can inspect and extend.
+      - generic [ref=e225]:
+        - generic [ref=e227]:
+          - generic [ref=e228]:
+            - img [ref=e229]
+            - generic [ref=e232]: Included
+          - heading "Document Q&A and summarisation" [level=3] [ref=e233]
+          - paragraph [ref=e234]: Upload a document, ask questions about it, or get a clean summary. Backed by a dedicated summarise skill on top of the Team Suzie markdown-document tools.
+        - generic [ref=e236]:
+          - generic [ref=e237]:
+            - img [ref=e238]
+            - generic [ref=e241]: Included
+          - heading "First-pass drafting" [level=3] [ref=e242]
+          - paragraph [ref=e243]: Author markdown, write into named sections, export to .docx. The plumbing for a draft → review → export loop is in place.
+        - generic [ref=e245]:
+          - generic [ref=e246]:
+            - img [ref=e247]
+            - generic [ref=e254]: Included
+          - heading "Document comparison" [level=3] [ref=e255]
+          - paragraph [ref=e256]: Diff two versions of a document, highlight material changes, and summarise what moved between drafts. The redline workflow lawyers actually do — automated, but reviewable.
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - img [ref=e260]
+            - generic [ref=e264]: Included
+          - heading "Tracked-changes redline in chat" [level=3] [ref=e265]
+          - paragraph [ref=e266]: "\"Redline this NDA from buyer's perspective\" — Counsel proposes per-clause edits as cards in the chat with Accept/Reject in-app, an inline ins/del preview in the side panel, and a downloadable .docx that opens in Word with native tracked changes. Append-only version chain across upload → proposal → accept/reject."
+        - generic [ref=e268]:
+          - generic [ref=e269]:
+            - img [ref=e270]
+            - generic [ref=e276]: Included
+          - heading "Legal research across 19 jurisdictions" [level=3] [ref=e277]
+          - paragraph [ref=e278]: "A unified search-and-fetch surface over 22 official providers: US (CourtListener + eCFR), UK, EU (EUR-Lex + CURIA), France (Légifrance + Judilibre), Germany, Spain, Italy, Austria, Switzerland, HUDOC, Brazil, India, Australia, Netherlands, Ireland, Canada, Belgium, Japan, Mexico, Argentina. Counsel picks the right backend by jurisdiction and returns primary sources with direct links — no fabricated authorities. Auth-gated providers light up when their API keys are present."
+        - generic [ref=e280]:
+          - generic [ref=e281]:
+            - img [ref=e282]
+            - generic [ref=e287]: Included
+          - heading "Configurable agent personas" [level=3] [ref=e288]
+          - paragraph [ref=e289]: Multiple agent personas (paralegal, deal counsel, deposition reviewer) sharing one skill set but with different defaults and house style. Switch persona for the task; the firm's house style and skills follow.
+        - generic [ref=e291]:
+          - generic [ref=e292]:
+            - img [ref=e293]
+            - generic [ref=e295]: Included
+          - heading "Curated prompt and workflow library" [level=3] [ref=e296]
+          - paragraph [ref=e297]: A starting set of prompts and workflow templates aimed at legal use — deposition analysis, OCG summaries, drafting starters. Edit, replace, extend.
+        - generic [ref=e299]:
+          - generic [ref=e300]:
+            - img [ref=e301]
+            - generic [ref=e304]: Included
+          - heading "Contract and clause review" [level=3] [ref=e305]
+          - paragraph [ref=e306]: Review agreements clause by clause, extract key terms, compare versions, and turn findings into structured outputs. Bring your own playbooks and house style to make it yours.
+        - generic [ref=e308]:
+          - generic [ref=e309]:
+            - img [ref=e310]
+            - generic [ref=e313]: Included
+          - heading "Tabular review and structured extraction" [level=3] [ref=e314]
+          - paragraph [ref=e315]: Turn document sets into review tables, issue lists, diligence summaries, and other structured legal work product. Add columns, run extraction, inspect citations, and export the results.
+    - generic [ref=e317]:
+      - generic [ref=e319]:
+        - paragraph [ref=e320]: 05/Two paths
+        - heading "Same code. Both free." [level=2] [ref=e321]
+        - paragraph [ref=e322]: Use the hosted version — free, with Qwen 3.6-Plus tokens included courtesy of Qwen — or self-host the same MIT-licensed code on your own infrastructure with your own keys. There is no enterprise tier and no paid plan; it is one product either way.
+      - generic [ref=e323]:
+        - generic [ref=e325]:
+          - paragraph [ref=e326]: Open source
+          - generic [ref=e327]:
+            - generic [ref=e328]: Free
+            - generic [ref=e329]: forever
+          - paragraph [ref=e330]: MIT licensed. Run on your own infrastructure.
+          - list [ref=e331]:
+            - listitem [ref=e332]:
+              - img [ref=e333]
+              - generic [ref=e335]: Fork the repo, follow the README
+            - listitem [ref=e336]:
+              - img [ref=e337]
+              - generic [ref=e339]: Bring your own LLM provider keys
+            - listitem [ref=e340]:
+              - img [ref=e341]
+              - generic [ref=e343]: Client data never traverses our infrastructure
+            - listitem [ref=e344]:
+              - img [ref=e345]
+              - generic [ref=e347]: Your team owns uptime, updates, and patching
+          - link "Fork on GitHub (Free)" [ref=e348] [cursor=pointer]:
+            - /url: https://github.com/firelex/suzielaw
+            - img [ref=e349]
+            - text: Fork on GitHub
+            - generic [ref=e352]: (Free)
+        - generic [ref=e354]:
+          - paragraph [ref=e355]: Hosted
+          - generic [ref=e356]:
+            - generic [ref=e357]: Free
+            - generic [ref=e358]: to start
+          - paragraph [ref=e359]: Same code, run by Team Suzie. Qwen 3.6-Plus tokens per user included courtesy of Qwen — no card required to sign up.
+          - list [ref=e360]:
+            - listitem [ref=e361]:
+              - img [ref=e362]
+              - generic [ref=e364]: Qwen 3.6-Plus tokens included per user, courtesy of Qwen
+            - listitem [ref=e365]:
+              - img [ref=e366]
+              - generic [ref=e368]: Up and running in minutes, no installation
+            - listitem [ref=e369]:
+              - img [ref=e370]
+              - generic [ref=e372]: Managed OAuth, updates, and infrastructure
+            - listitem [ref=e373]:
+              - img [ref=e374]
+              - generic [ref=e376]: Same code, same MIT license — no enterprise paywall
+            - listitem [ref=e377]:
+              - img [ref=e378]
+              - generic [ref=e380]: Full data export and migration to self-hosted at any time
+          - link "Try hosted — Free" [ref=e381] [cursor=pointer]:
+            - /url: https://app.suzielaw.com/login
+            - text: Try hosted — Free
+            - img [ref=e382]
+      - paragraph [ref=e385]: Migrate between the two whenever you want. Same database schema, same prompts, same workflows — exporting from hosted to self-hosted is a single command.
+    - generic [ref=e387]:
+      - generic [ref=e389]:
+        - paragraph [ref=e390]: 06/Security model
+        - heading "Where the data goes" [level=2] [ref=e391]
+        - paragraph [ref=e392]: For self-hosted deployments, there is no shared Suzie Law service in your request path. The app runs on your infrastructure; LLM calls go to whichever provider you contract with directly. Confidentiality is structural, not promised.
+      - generic [ref=e393]:
+        - generic [ref=e395]:
+          - img [ref=e397]
+          - generic [ref=e408]:
+            - 'heading "Data residency: your infrastructure" [level=3] [ref=e409]'
+            - paragraph [ref=e410]: The app, database, prompts, workflows, and document store run where you put them. LLM calls go only to the model endpoint you configure.
+        - generic [ref=e412]:
+          - img [ref=e414]
+          - generic [ref=e417]:
+            - 'heading "LLM provider: your keys, your contract" [level=3] [ref=e418]'
+            - paragraph [ref=e419]: The Team Suzie LLM proxy is provider-agnostic — OpenAI, Anthropic, Alibaba, self-hosted. You pick whose data-handling terms apply.
+        - generic [ref=e421]:
+          - img [ref=e423]
+          - generic [ref=e426]:
+            - 'heading "Audit trail: opt-in, not on by default" [level=3] [ref=e427]'
+            - paragraph [ref=e428]: Team Suzie includes audit-log infrastructure with actor, action, and scope fields. Wire it into the routes that matter for your firm — token-budget changes, approval reviews, admin resets — to get a structured activity feed.
+        - generic [ref=e430]:
+          - img [ref=e432]
+          - generic [ref=e436]:
+            - 'heading "Approvals: human-in-the-loop where it matters" [level=3] [ref=e437]'
+            - paragraph [ref=e438]: A generic approval queue ships with the platform. Wire any agent action through it before it dispatches.
+        - generic [ref=e440]:
+          - img [ref=e442]
+          - generic [ref=e446]:
+            - 'heading "Certifications: not ours" [level=3] [ref=e447]'
+            - paragraph [ref=e448]: There is no shared service to certify. SOC 2, ISO 27001, and friends apply to your firm's deployment, not to us — your existing controls cover it.
+        - generic [ref=e450]:
+          - img [ref=e452]
+          - generic [ref=e457]:
+            - 'heading "License: MIT, no telemetry" [level=3] [ref=e458]'
+            - paragraph [ref=e459]: The code is yours under MIT. No phone-home, no usage reporting, no kill switch. If we disappear tomorrow, you keep running.
+      - generic [ref=e461]:
+        - paragraph [ref=e462]: Hosted plans differ
+        - paragraph [ref=e463]: Hosted Suzie Law runs on Team Suzie infrastructure, with our LLM contracts and operational controls. Data traverses our infrastructure rather than yours, so self-host if you need data to never leave your network. Migrate from hosted to self-hosted whenever you want; same code, same schema, single command.
+    - generic [ref=e465]:
+      - generic [ref=e467]:
+        - paragraph [ref=e468]: 07/Questions we get asked
+        - heading "Straight answers" [level=2] [ref=e469]
+      - generic [ref=e470]:
+        - group [ref=e472]:
+          - generic "How is this different from Harvey or Legora?" [ref=e473] [cursor=pointer]:
+            - heading "How is this different from Harvey or Legora?" [level=3] [ref=e474]
+            - img [ref=e475]
+        - group [ref=e478]:
+          - generic "Why give it away? And what if you go away?" [ref=e479] [cursor=pointer]:
+            - heading "Why give it away? And what if you go away?" [level=3] [ref=e480]
+            - img [ref=e481]
+        - group [ref=e484]:
+          - generic "Is our client data really safe?" [ref=e485] [cursor=pointer]:
+            - heading "Is our client data really safe?" [level=3] [ref=e486]
+            - img [ref=e487]
+        - group [ref=e490]:
+          - generic "What about hallucinated citations?" [ref=e491] [cursor=pointer]:
+            - heading "What about hallucinated citations?" [level=3] [ref=e492]
+            - img [ref=e493]
+        - group [ref=e496]:
+          - generic "Can we deploy this without an internal tech team?" [ref=e497] [cursor=pointer]:
+            - heading "Can we deploy this without an internal tech team?" [level=3] [ref=e498]
+            - img [ref=e499]
+    - generic [ref=e503]:
+      - generic [ref=e505]:
+        - paragraph [ref=e506]: Why we built this
+        - img "Mathias Strasser" [ref=e508]
+        - generic [ref=e509]:
+          - paragraph [ref=e510]: Mathias Strasser
+          - paragraph [ref=e511]:
+            - text: Founder, Team Suzie and Scissero ·
+            - link "Scissero" [ref=e512] [cursor=pointer]:
+              - /url: https://scissero.com
+      - generic [ref=e514]:
+        - heading "The project is sponsored by Scissero, an AI-enabled law firm." [level=2] [ref=e515]
+        - paragraph [ref=e516]: Scissero has chosen to open-source a legal AI foundation so its own lawyers — and others — can build domain-specific, agentic applications, rather than being limited to shallow chat interfaces.
+        - paragraph [ref=e517]: In law, as elsewhere, the future belongs to domain experts. Lawyers can now turn practice knowledge into software — something that, a decade ago, would have required a dedicated product team.
+        - paragraph [ref=e518]: That shift changes what legal AI should be. Durable value does not come from a generic chat interface; it comes from the workflow logic behind it — prompts, playbooks, templates, review standards, and a firm’s approach to legal work.
+        - paragraph [ref=e519]: "Suzie Law makes that baseline accessible: a working legal AI workspace with Counsel chat, document analysis, drafting, structured review, and DOCX output — released as code that can be inspected, modified, and extended."
+        - paragraph [ref=e521]:
+          - link "Scissero" [ref=e522] [cursor=pointer]:
+            - /url: https://scissero.com
+          - text: "continues to build on top of this foundation internally, developing more specialised systems for its own work. That is the point: Suzie Law is the baseline, not the moat — open-sourced so others can start from the same place and extend it in their own direction."
+        - paragraph [ref=e523]: Self-hosted by default, or hosted by choice. Free either way. MIT-licensed, with no enterprise tier.
+        - link "Read the founder’s note" [ref=e524] [cursor=pointer]:
+          - /url: https://teamsuzie.com/why-i-built-this
+          - text: Read the founder’s note
+          - img [ref=e525]
+    - generic [ref=e530]:
+      - generic [ref=e531]:
+        - paragraph [ref=e532]: Open source · MIT
+        - heading "Build it. Or let us run it for you." [level=2] [ref=e533]
+        - paragraph [ref=e534]: One product, free either way. Use the hosted version with Qwen 3.6-Plus tokens included courtesy of Qwen, or self-host the same MIT-licensed code on your own infrastructure with your own keys. Migrate between the two whenever you want.
+      - generic [ref=e535]:
+        - link "Start hosted" [ref=e536] [cursor=pointer]:
+          - /url: https://app.suzielaw.com/login
+          - text: Start hosted
+          - img [ref=e537]
+        - link "Fork on GitHub (Free)" [ref=e539] [cursor=pointer]:
+          - /url: https://github.com/firelex/suzielaw
+          - img [ref=e540]
+          - text: Fork on GitHub
+          - generic [ref=e543]: (Free)
+  - contentinfo [ref=e544]:
+    - generic [ref=e546]:
+      - generic [ref=e547]:
+        - link "Suzie Law" [ref=e548] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e549]: Suzie
+          - generic [ref=e550]: Law
+        - paragraph [ref=e551]:
+          - text: Open-source legal AI workspace built on
+          - link "Team Suzie" [ref=e552] [cursor=pointer]:
+            - /url: https://teamsuzie.com
+        - paragraph [ref=e553]:
+          - text: v0.1 · MIT ·
+          - link "changelog" [ref=e554] [cursor=pointer]:
+            - /url: https://github.com/firelex/suzielaw/commits/main
+      - navigation [ref=e555]:
+        - link "The case" [ref=e556] [cursor=pointer]:
+          - /url: "#case"
+        - link "How it works" [ref=e557] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "What it does" [ref=e558] [cursor=pointer]:
+          - /url: "#capabilities"
+        - link "Security model" [ref=e559] [cursor=pointer]:
+          - /url: "#trust"
+        - link "FAQ" [ref=e560] [cursor=pointer]:
+          - /url: "#faq"
+        - link "teamsuzie.com" [ref=e561] [cursor=pointer]:
+          - /url: https://teamsuzie.com
+          - text: teamsuzie.com
+          - img [ref=e562]
+        - link "GitHub" [ref=e566] [cursor=pointer]:
+          - /url: https://github.com/firelex/suzielaw
+          - img [ref=e567]
+          - text: GitHub
+    - generic [ref=e571]:
+      - paragraph [ref=e572]: Copyright © 2026 suzielaw. OSS under MIT.
+      - link "Privacy Policy" [ref=e573] [cursor=pointer]:
+        - /url: https://teamsuzie.com/privacy
