@@ -1,6 +1,6 @@
 import { citationProtocolFragment } from '@teamsuzie/citations';
 import type { WorkspacesStore } from '@teamsuzie/workspaces';
-import type { MatterRag } from './matter-rag.js';
+import type { WorkspaceRag } from '@teamsuzie/kb';
 import { Router, json as expressJson, type Request, type Response } from 'express';
 import multer from 'multer';
 import {
@@ -413,7 +413,7 @@ export interface MatterUploadsRouterOptions {
   maxUploadBytes: number;
   /** Optional: if set, every uploaded matter doc is also indexed into the
    *  KB so cell runs (and later matter chats) can do RAG against it. */
-  rag?: MatterRag;
+  rag?: WorkspaceRag;
   /** Optional: if set, every uploaded matter doc records a `source: 'upload'`
    *  version in the document-version chain so later proposals can branch
    *  from a known root version. */

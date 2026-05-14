@@ -93,7 +93,7 @@ import { WorkflowsStore, createWorkflowsRouter } from '@teamsuzie/workflows';
 import { seedAndMigrateWorkflows } from './seed-workflows.js';
 import { parseResponse } from '@teamsuzie/citations';
 import type { FileRecord } from './files.js';
-import { MatterRag } from './matter-rag.js';
+import { WorkspaceRag } from '@teamsuzie/kb';
 import { buildKbStore, createKbRouter } from './kb.js';
 import { draftColumnPrompt } from '@teamsuzie/markdown-document';
 import { buildReviewWorkbook } from './reviews-export.js';
@@ -205,8 +205,10 @@ const kbSearchTool = config.kb.enabled
   : null;
 
 // Per-matter RAG glue: indexes uploaded matter docs into kbStore (with
-// owner_id = matter:<matterId>) and exposes per-doc + per-matter search.
-const matterRag = new MatterRag({
+// owner_id = workspace:<matterId>) and exposes per-doc + per-workspace
+// search. "matter" remains the user-facing term — internally it's just
+// the workspace id passed through to upstream `WorkspaceRag`.
+const matterRag = new WorkspaceRag({
   db,
   kb: kbStore,
   markitdownBaseUrl: config.markitdown.baseUrl,
@@ -481,7 +483,7 @@ app.use(
       }
     },
     onWorkspaceRemoved: (workspaceId) => {
-      matterRag.removeMatter(workspaceId);
+      matterRag.removeWorkspace(workspaceId);
       members.removeMembersFor({ type: 'matter', id: workspaceId });
     },
   }),
@@ -1426,7 +1428,7 @@ app.post('/api/admin/reset', requireAuth, async (_req, res) => {
     //    each store's per-row API — this is the wipe-everything path.
     const wipe = db.transaction(() => {
       db.exec(`
-        DELETE FROM matter_doc_index;
+        DELETE FROM workspace_doc_index;
         DELETE FROM chat_messages;
         DELETE FROM chats;
         DELETE FROM review_cells;

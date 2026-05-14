@@ -14,13 +14,13 @@ import type { CellChatMessage } from '@teamsuzie/grid-review';
 import type { InMemoryFileStore } from './files.js';
 import { convertFileToMarkdown } from './document-tools.js';
 import { rewriteQueryAsHypothetical } from './hyde.js';
-import type { MatterRag } from './matter-rag.js';
+import type { WorkspaceRag } from '@teamsuzie/kb';
 import { createTokenMeteredFetch, type TokenBudgetStore } from '@teamsuzie/hosted-demo';
 import { getSessionUser } from './auth.js';
 
 export interface BuildReviewRunAdapterOptions {
   fileStore: InMemoryFileStore;
-  rag: MatterRag;
+  rag: WorkspaceRag;
   markitdownBaseUrl: string;
   agentBaseUrl: string;
   agentApiKey: string | undefined;
