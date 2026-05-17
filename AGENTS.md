@@ -41,11 +41,19 @@ upstream package first, then `import` from there.
 - Chat-handling helpers (tool-use status, artifact panel, markdown renderer,
   whimsical-verb lists, prettifiers). Add to `@teamsuzie/ui` or
   `@teamsuzie/agent-loop`.
-- Redline / tracked-changes / version-diff rendering. Use
-  `@teamsuzie/ui` `RedlineRuns`, `RedlineSpan`, `VersionDiff`. The local
-  `redline-panel.tsx`, `compare-versions.tsx`'s `DiffPanel`, and
-  `tracked-changes-panel.tsx`'s inline spans are thin shells around these
-  — anything new (different diff shape, new event kind) goes upstream.
+- Redline / tracked-changes / version-diff UI. Use `@teamsuzie/ui`
+  `TrackedChangesPanel`, `RedlinePanelContent`, `VersionDiff`,
+  `RedlineRuns`, `RedlineSpan`. Local `tracked-changes-panel.tsx` and
+  `redline-panel.tsx` were deleted in the P4.5 sweep; suzielaw now
+  just supplies `onResolve`/`onLoadRedline` callbacks pointing at its
+  cookie-authed endpoints. `compare-versions.tsx` is the thin
+  matter-aware wrapper around upstream `VersionDiff`.
+- Redline/propose-edits server logic. Use `@teamsuzie/docx`
+  `extractRedlineParagraphs`, `findEditParagraphIndex`,
+  `proposeDocumentEdits`, `acceptRevision`, `rejectRevision`. The local
+  `src/redline-view.ts` was deleted; `src/tools/propose-edits.ts` is a
+  thin file-store + `documentVersions` wrapper around
+  `proposeDocumentEdits`.
 - Document navigation/drafting tools. Add to `@teamsuzie/markdown-document`.
 - DB plumbing helpers. Add to `@teamsuzie/db-sqlite`.
 - Sidekick services (conversion agents, etc.). Add to `apps/agents/*`
