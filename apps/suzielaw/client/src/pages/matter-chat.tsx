@@ -20,6 +20,7 @@ import {
   TrackedChangesPanel,
   cn,
   useAutoResizeTextarea,
+  useChatComposer,
   useSelectedModel,
   type ProposeEditsResult,
   type ToolEvent,
@@ -297,9 +298,9 @@ export function MatterChatPage() {
     });
   }
 
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text || status === 'sending' || !matterId || !chatId) return;
+  async function sendMessage(textArg: string) {
+    const text = textArg.trim();
+    if (!text || !matterId || !chatId) return;
 
     const userMsg: UiMessage = {
       id: crypto.randomUUID(),
@@ -313,7 +314,6 @@ export function MatterChatPage() {
       userMsg,
       { id: assistantId, role: 'assistant', content: '' },
     ]);
-    setInput('');
     const sentWorkflowId = pendingWorkflowId;
     setPendingWorkflowId(null);
     setPendingWorkflowLabel(null);
@@ -467,6 +467,17 @@ export function MatterChatPage() {
     abortRef.current?.abort();
   }
 
+  const isStreaming = status === 'sending';
+  const { handleKeyDown, handleSubmit, handleStop, canSend } = useChatComposer({
+    isStreaming,
+    onSend: (text) => {
+      void sendMessage(text);
+    },
+    onStop: stopStreaming,
+    text: input,
+    setText: setInput,
+  });
+
   if (!matterId || !chatId) {
     return (
       <>
@@ -482,7 +493,6 @@ export function MatterChatPage() {
     );
   }
 
-  const isStreaming = status === 'sending';
   const matterName = matter.matter?.name ?? 'Matter';
 
   return (
@@ -574,14 +584,8 @@ export function MatterChatPage() {
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendMessage();
-                  }
-                }}
+                onKeyDown={handleKeyDown}
                 placeholder={`Ask about ${matterName}`}
-                disabled={isStreaming}
                 className="block w-full min-h-16 resize-none border-0 bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               />
               <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
@@ -607,7 +611,7 @@ export function MatterChatPage() {
                     size="sm"
                     type="button"
                     variant="outline"
-                    onClick={stopStreaming}
+                    onClick={handleStop}
                     className="h-8 rounded-full px-4"
                     aria-label="Stop streaming"
                   >
@@ -617,8 +621,8 @@ export function MatterChatPage() {
                 ) : (
                   <Button
                     size="sm"
-                    onClick={() => void sendMessage()}
-                    disabled={!input.trim()}
+                    onClick={() => handleSubmit()}
+                    disabled={!canSend}
                     className="h-8 rounded-full px-4"
                   >
                     <Send className="size-4" aria-hidden />
