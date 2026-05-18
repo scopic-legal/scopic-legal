@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
 import { KnowledgeBaseStore, createOpenAIEmbedder } from '@teamsuzie/kb';
-import { convertDocxToMarkdown, isDocxMimeType } from '@teamsuzie/markdown-document';
+import { convertToMarkdown } from '@teamsuzie/document-conversion';
 import { db } from './db.js';
 import { config } from './config.js';
 import { getSessionUser } from './auth.js';
@@ -40,34 +40,28 @@ interface IngestOptions {
 
 /**
  * Convert a binary upload to markdown using whichever path fits the mime
- * type, then insert into the KB. Mirrors the `convert_to_markdown` tool's
- * routing: DOCX uses mammoth in-process, text-like uploads pass through,
- * everything else routes to markitdown-agent.
+ * type, then insert into the KB. Text-like uploads pass through as-is;
+ * everything else routes via `@teamsuzie/document-conversion` (DOCX uses
+ * mammoth in-process, anything else goes to markitdown-agent).
  */
 async function ingestFile(opts: IngestOptions, file: Express.Multer.File, ownerId?: string): Promise<{ id: string; chunkCount: number }> {
   let markdown: string;
 
-  if (isDocxMimeType(file.mimetype) || file.originalname.toLowerCase().endsWith('.docx')) {
-    const result = await convertDocxToMarkdown(file.buffer);
-    markdown = result.markdown;
-  } else if (TEXT_MIME.test(file.mimetype)) {
+  if (TEXT_MIME.test(file.mimetype)) {
     markdown = file.buffer.toString('utf-8');
-  } else if (opts.markitdownBaseUrl) {
-    const form = new FormData();
-    form.append('file', new Blob([file.buffer], { type: file.mimetype }), file.originalname);
-    const response = await fetch(`${opts.markitdownBaseUrl}/convert`, {
-      method: 'POST',
-      body: form,
-      signal: AbortSignal.timeout(180_000),
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(`markitdown-agent /convert returned ${response.status}: ${text.slice(0, 200)}`);
-    }
-    const data = (await response.json()) as { markdown: string };
-    markdown = data.markdown;
   } else {
-    throw new Error(`Unsupported file type: ${file.mimetype}. Configure SUZIELAW_MARKITDOWN_AGENT_BASE_URL to ingest non-DOCX binaries.`);
+    const isDocx =
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.originalname.toLowerCase().endsWith('.docx');
+    if (!opts.markitdownBaseUrl && !isDocx) {
+      throw new Error(`Unsupported file type: ${file.mimetype}. Configure SUZIELAW_MARKITDOWN_AGENT_BASE_URL to ingest non-DOCX binaries.`);
+    }
+    const result = await convertToMarkdown(file.buffer, {
+      mime: file.mimetype,
+      filename: file.originalname,
+      markitdownAgentBaseUrl: opts.markitdownBaseUrl,
+    });
+    markdown = result.markdown;
   }
 
   if (!markdown.trim()) throw new Error('Uploaded file converted to empty markdown — nothing to index.');

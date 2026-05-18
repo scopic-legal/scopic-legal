@@ -56,6 +56,31 @@ const migrations: Migration[] = [
         ON matter_doc_index(kb_doc_id);
     `,
   },
+  {
+    // Renames matter_doc_index → workspace_doc_index (and matter_id →
+    // workspace_id) so we can consume the upstream
+    // @teamsuzie/kb.WorkspaceRag glue verbatim. Also rewrites existing
+    // kb_documents.owner_id values from "matter:<id>" → "workspace:<id>",
+    // since the upstream class scopes by `workspace:` and would otherwise
+    // miss everything indexed before this migration.
+    //
+    // User-facing terminology ("matter") is preserved at the call layer;
+    // only the storage names move to the platform-neutral workspace term.
+    name: '20260514_rename_matter_doc_index_to_workspace_doc_index',
+    up: `
+      ALTER TABLE matter_doc_index RENAME TO workspace_doc_index;
+      ALTER TABLE workspace_doc_index RENAME COLUMN matter_id TO workspace_id;
+      DROP INDEX IF EXISTS idx_matter_doc_index_matter;
+      DROP INDEX IF EXISTS idx_matter_doc_index_kb;
+      CREATE INDEX IF NOT EXISTS idx_workspace_doc_index_workspace
+        ON workspace_doc_index(workspace_id);
+      CREATE INDEX IF NOT EXISTS idx_workspace_doc_index_kb
+        ON workspace_doc_index(kb_doc_id);
+      UPDATE kb_documents
+         SET owner_id = 'workspace:' || substr(owner_id, length('matter:') + 1)
+       WHERE owner_id LIKE 'matter:%';
+    `,
+  },
 ];
 
 export const db: DatabaseInstance = openDb({

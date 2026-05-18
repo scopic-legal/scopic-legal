@@ -19,6 +19,7 @@
     "@teamsuzie/db-sqlite": "link:../../../open_teamsuzie/packages/db-sqlite",
     "@teamsuzie/docx": "link:../../../open_teamsuzie/packages/docx",
     "@teamsuzie/docx-diff": "link:../../../open_teamsuzie/packages/docx-diff",
+    "@teamsuzie/document-conversion": "link:../../../open_teamsuzie/packages/document-conversion",
     "@teamsuzie/document-versions": "link:../../../open_teamsuzie/packages/document-versions",
     "@teamsuzie/kb": "link:../../../open_teamsuzie/packages/kb",
     "@teamsuzie/markdown-document": "link:../../../open_teamsuzie/packages/markdown-document",

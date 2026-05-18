@@ -1,11 +1,11 @@
 import {
   InMemoryDocumentStore,
   MarkdownDocument,
-  convertDocxToMarkdown,
   documentDraftingTools,
   documentNavigationTools,
   isDocxMimeType,
 } from '@teamsuzie/markdown-document';
+import { convertToMarkdown } from '@teamsuzie/document-conversion';
 import type { AnyToolDefinition } from '@teamsuzie/agent-loop';
 import type { InMemoryFileStore, FileRecord } from './files.js';
 
@@ -14,33 +14,30 @@ import type { InMemoryFileStore, FileRecord } from './files.js';
  * else via markitdown-agent) to plain markdown text. Pulled out of the
  * convert_to_markdown tool so other features (e.g. tabular review cell
  * runs) can use the same path without going through the agent loop.
+ *
+ * Thin wrapper over `@teamsuzie/document-conversion`'s `convertToMarkdown`
+ * facade. Preserves the prior "standalone DOCX still works without
+ * markitdown-agent" behaviour by short-circuiting non-DOCX binaries with
+ * a friendly error when no agent URL is configured.
  */
 export async function convertFileToMarkdown(
   record: FileRecord,
   opts: { markitdownBaseUrl: string },
 ): Promise<string> {
-  if (isDocxMimeType(record.mimeType) || record.name.toLowerCase().endsWith('.docx')) {
-    const result = await convertDocxToMarkdown(record.bytes);
-    return result.markdown;
-  }
-  if (!opts.markitdownBaseUrl) {
+  if (
+    !opts.markitdownBaseUrl &&
+    !(isDocxMimeType(record.mimeType) || record.name.toLowerCase().endsWith('.docx'))
+  ) {
     throw new Error(
       `Cannot convert ${record.mimeType || record.name}: markitdown-agent is not configured. Only DOCX is supported in standalone mode.`,
     );
   }
-  const form = new FormData();
-  form.append('file', new Blob([record.bytes], { type: record.mimeType }), record.name);
-  const response = await fetch(`${opts.markitdownBaseUrl}/convert`, {
-    method: 'POST',
-    body: form,
-    signal: AbortSignal.timeout(120_000),
+  const { markdown } = await convertToMarkdown(record.bytes, {
+    mime: record.mimeType,
+    filename: record.name,
+    markitdownAgentBaseUrl: opts.markitdownBaseUrl,
   });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`markitdown-agent /convert returned ${response.status}: ${text.slice(0, 200)}`);
-  }
-  const data = (await response.json()) as { filename: string; markdown: string };
-  return data.markdown;
+  return markdown;
 }
 
 interface BuildOptions {

@@ -28,6 +28,9 @@ importers:
       '@teamsuzie/db-sqlite':
         specifier: link:../../../open_teamsuzie/packages/db-sqlite
         version: link:../../../open_teamsuzie/packages/db-sqlite
+      '@teamsuzie/document-conversion':
+        specifier: link:../../../open_teamsuzie/packages/document-conversion
+        version: link:../../../open_teamsuzie/packages/document-conversion
       '@teamsuzie/document-versions':
         specifier: link:../../../open_teamsuzie/packages/document-versions
         version: link:../../../open_teamsuzie/packages/document-versions

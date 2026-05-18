@@ -10,12 +10,15 @@ import {
   PromptCardDescription,
   PromptCardTitle,
   ToolUseStatus,
+  TrackedChangesPanel,
   cn,
   humanSize,
   useAutoResizeTextarea,
+  useChatComposer,
   useSelectedModel,
   type ArtifactSnapshot,
   type Persona,
+  type ProposeEditsResult,
   type ToolEvent,
 } from '@teamsuzie/ui';
 import { parseResponse, SENTINEL_OPEN, type Citation } from '@teamsuzie/citations';
@@ -24,9 +27,10 @@ import { useDocSidePanel } from '../components/document-side-panel.js';
 import { useAssistantChats } from '../hooks/use-assistant-chats.js';
 import { PaywallDialog } from '../components/paywall-dialog.js';
 import {
-  TrackedChangesPanel,
-  type ProposeEditsResult,
-} from '../components/tracked-changes-panel.js';
+  loadRedline,
+  redlineDownloadHref,
+  resolveRevisions,
+} from '../lib/redline-api.js';
 
 const SELECTED_MODEL_KEY = 'suzielaw:selected-model';
 
@@ -210,6 +214,12 @@ function MessageItem({
           key={`${message.id}:${result.download_file_id}`}
           result={result}
           chatId={chatKey}
+          onResolve={resolveRevisions}
+          onLoadRedline={loadRedline}
+          downloadHref={redlineDownloadHref(
+            result.download_session_id,
+            result.download_file_id,
+          )}
         />
       ))}
     </div>
@@ -526,11 +536,11 @@ export function AssistantPage({
   }, [messages]);
 
   async function sendMessage(
-    overrideText?: string,
+    textArg: string,
     overrideAttachments?: Attachment[],
   ) {
-    const text = (overrideText ?? input).trim();
-    if (!text || status === 'sending') {
+    const text = textArg.trim();
+    if (!text) {
       return;
     }
 
@@ -601,7 +611,6 @@ export function AssistantPage({
     const turnAttachments = overrideAttachments ?? attachments;
     const sentAttachmentIds = turnAttachments.map((a) => a.id);
 
-    setInput('');
     setPrefillLabel(null);
     setPendingWorkflowId(null);
     if (!overrideAttachments) setAttachments([]);
@@ -816,6 +825,17 @@ export function AssistantPage({
     abortRef.current?.abort();
   }
 
+  const isStreaming = status === 'sending';
+  const { handleKeyDown, handleSubmit, handleStop, canSend } = useChatComposer({
+    isStreaming,
+    onSend: (text) => {
+      void sendMessage(text);
+    },
+    onStop: stopStreaming,
+    text: input,
+    setText: setInput,
+  });
+
   async function newChat() {
     await fetch('/api/session/reset', {
       method: 'POST',
@@ -863,7 +883,6 @@ export function AssistantPage({
     return out;
   }, [attachmentsById]);
 
-  const isStreaming = status === 'sending';
   const isEmpty = messages.length === 0;
   const showGreeting = isEmpty && historyLoaded && !chatId;
   const showLoading = !!chatId && !historyLoaded;
@@ -1006,14 +1025,8 @@ export function AssistantPage({
               ref={textareaRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault();
-                  void sendMessage();
-                }
-              }}
+              onKeyDown={handleKeyDown}
               placeholder={`Message ${agentName} —`}
-              disabled={isStreaming}
               className="block w-full min-h-16 resize-none border-0 bg-transparent px-4 pt-3 text-[15px] outline-none placeholder:font-mono placeholder:text-[12px] placeholder:uppercase placeholder:tracking-[0.10em] placeholder:text-foreground/40 disabled:cursor-not-allowed disabled:opacity-50"
             />
             <div className="flex items-center justify-between border-t border-foreground/10 px-3 pb-2 pt-2">
@@ -1045,7 +1058,7 @@ export function AssistantPage({
               {isStreaming ? (
                 <button
                   type="button"
-                  onClick={stopStreaming}
+                  onClick={handleStop}
                   className="inline-flex h-7 items-center gap-1.5 border border-foreground bg-background px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground hover:bg-foreground hover:text-background"
                   aria-label="Stop streaming"
                 >
@@ -1055,8 +1068,8 @@ export function AssistantPage({
               ) : (
                 <button
                   type="button"
-                  onClick={() => void sendMessage()}
-                  disabled={!input.trim() && attachments.length === 0}
+                  onClick={() => handleSubmit()}
+                  disabled={!canSend && attachments.length === 0}
                   className="inline-flex h-7 items-center gap-1.5 bg-foreground px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-background transition-colors hover:bg-saffron-400 hover:text-foreground disabled:cursor-not-allowed disabled:bg-foreground/30"
                 >
                   Send <span aria-hidden>→</span>
