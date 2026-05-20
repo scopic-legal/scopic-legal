@@ -100,35 +100,23 @@ jobs:
       # was created by the tag push. It produces:
       #   • Scopic Setup <version>.exe  — the NSIS installer users download
       #   • latest.yml                  — metadata read by electron-updater
+      # electron-builder reads GH_TOKEN to upload artifacts to the release that
+      # was created by the tag push. It produces:
+      #   • Scopic Setup <version>.exe  — the NSIS installer users download
+      #   • latest.yml                  — metadata read by electron-updater
       - name: Package and publish Electron installer
         working-directory: scopic
         shell: pwsh
         run: |
-          pnpm exec electron-builder ${{ matrix.eb_args }} --publish always 2>&1 |
-            Tee-Object -FilePath eb-build.log
+          $out = pnpm exec electron-builder ${{ matrix.eb_args }} --publish always 2>&1
           $code = $LASTEXITCODE
-          Get-Content eb-build.log | Select-Object -Last 80
+          $out | ForEach-Object { Write-Host $_ }
+          if ($code -ne 0) {
+            # Surface key error lines as annotations so they appear in the GitHub API
+            $errorLines = $out | Where-Object { $_ -match '(⨯|Error:|error C|FAILED|cannot execute|exit status)' } | Select-Object -Last 15
+            $errorLines | ForEach-Object { Write-Host "::error::$_" }
+          }
           exit $code
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
-
-      - name: Upload electron-builder log (on failure)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: electron-builder-log-${{ matrix.os }}
-          path: scopic/eb-build.log
-
-      - name: Print electron-builder log to step summary (on failure)
-        if: failure()
-        working-directory: scopic
-        shell: pwsh
-        run: |
-          if (Test-Path eb-build.log) {
-            $lines = Get-Content eb-build.log
-            Add-Content $env:GITHUB_STEP_SUMMARY "## electron-builder log (last 120 lines)"
-            Add-Content $env:GITHUB_STEP_SUMMARY '```'
-            $lines | Select-Object -Last 120 | ForEach-Object { Add-Content $env:GITHUB_STEP_SUMMARY $_ }
-            Add-Content $env:GITHUB_STEP_SUMMARY '```'
-          }
