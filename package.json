@@ -75,7 +75,6 @@
       ]
     },
     "files": [
-      "node_modules/**/*",
       "electron/**/*",
       "apps/suzielaw/**/*",
       "!apps/suzielaw/client/node_modules/.vite"

@@ -10,18 +10,8 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            artifact: dist-electron/*.dmg
-          - os: windows-latest
-            artifact: dist-electron/*.exe
-          - os: ubuntu-latest
-            artifact: dist-electron/*.AppImage
+    name: Build and publish source archive
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Scopic
@@ -59,20 +49,29 @@ jobs:
 
       - name: Install dependencies
         working-directory: scopic
-        env:
-          PNPM_CONFIG_NODE_LINKER: hoisted
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop artifact
+      - name: Build Scopic
         working-directory: scopic
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PNPM_CONFIG_NODE_LINKER: hoisted
-        run: pnpm build && pnpm exec electron-builder --publish never
+        run: pnpm build
 
-      - name: Upload artifact to release
+      - name: Create source archive
+        shell: bash
+        run: |
+          artifact="scopic-${GITHUB_REF_NAME}-source.tar.gz"
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='*/node_modules' \
+            --exclude='.dev-logs' \
+            --exclude='data' \
+            -czf "$artifact" \
+            -C scopic .
+          echo "artifact=$artifact" >> "$GITHUB_ENV"
+
+      - name: Upload archive to release
         uses: softprops/action-gh-release@v2
         with:
-          files: scopic/${{ matrix.artifact }}
+          files: ${{ env.artifact }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
