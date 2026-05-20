@@ -62,7 +62,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: scopic
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
 
       - name: Build Scopic (TypeScript + Vite)
         working-directory: scopic
@@ -96,10 +96,6 @@ jobs:
             }
           }
 
-      # electron-builder reads GH_TOKEN to upload artifacts to the release that
-      # was created by the tag push. It produces:
-      #   • Scopic Setup <version>.exe  — the NSIS installer users download
-      #   • latest.yml                  — metadata read by electron-updater
       # electron-builder reads GH_TOKEN to upload artifacts to the release that
       # was created by the tag push. It produces:
       #   • Scopic Setup <version>.exe  — the NSIS installer users download
