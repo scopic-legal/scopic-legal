@@ -59,12 +59,15 @@ jobs:
 
       - name: Install dependencies
         working-directory: scopic
-        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
+        env:
+          PNPM_CONFIG_NODE_LINKER: hoisted
+        run: pnpm install --frozen-lockfile
 
       - name: Build desktop artifact
         working-directory: scopic
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PNPM_CONFIG_NODE_LINKER: hoisted
         run: pnpm dist -- --publish never
 
       - name: Upload artifact to release
