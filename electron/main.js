@@ -114,7 +114,8 @@ function startBackend() {
     return;
   }
 
-  const serverEntry = appPath('apps', 'suzielaw', 'dist', 'index.js');
+  // server.mjs is the esbuild-produced self-contained ESM bundle (no pnpm junctions).
+  const serverEntry = appPath('apps', 'suzielaw', 'dist', 'server.mjs');
   backendProcess = spawnLogged(process.execPath, [serverEntry], {
     cwd: appDir,
     env: childEnv({

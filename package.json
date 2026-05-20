@@ -14,18 +14,21 @@
     "dev": "pnpm --filter @scopic/assistant dev",
     "dev:full": "bash scripts/dev-up.sh",
     "build": "pnpm -r build",
+    "bundle": "node scripts/bundle-server.mjs",
     "typecheck": "pnpm -r typecheck",
     "electron": "electron .",
     "electron:dev": "cross-env NODE_ENV=development electron .",
-    "dist": "pnpm build && electron-builder",
-    "dist:mac": "pnpm build && electron-builder --mac",
-    "dist:win": "pnpm build && electron-builder --win",
-    "dist:linux": "pnpm build && electron-builder --linux"
+    "dist": "pnpm build && pnpm bundle && electron-builder",
+    "dist:mac": "pnpm build && pnpm bundle && electron-builder --mac",
+    "dist:win": "pnpm build && pnpm bundle && electron-builder --win",
+    "dist:linux": "pnpm build && pnpm bundle && electron-builder --linux"
   },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "better-sqlite3"
+      "better-sqlite3",
+      "esbuild",
+      "sqlite-vec"
     ]
   },
   "build": {
@@ -76,26 +79,24 @@
     },
     "files": [
       "electron/**/*",
-      "apps/suzielaw/**/*",
-      "!apps/suzielaw/client/node_modules/.vite"
-    ],
-    "extraResources": [
-      {
-        "from": "../../../code/teamsuzie_oss",
-        "to": "teamsuzie_oss",
-        "filter": [
-          "**/*",
-          "!**/node_modules"
-        ]
-      }
+      "apps/suzielaw/dist/server.mjs",
+      "apps/suzielaw/client/dist/**/*",
+      "apps/suzielaw/personas/**/*",
+      "apps/suzielaw/templates/**/*",
+      "apps/suzielaw/skills/**/*",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/sqlite-vec/**/*"
     ]
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
+    "esbuild": "^0.25.0",
     "electron": "^42.2.0",
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
-    "electron-updater": "^6.8.3"
+    "better-sqlite3": "^12.9.0",
+    "electron-updater": "^6.8.3",
+    "sqlite-vec": "^0.1.6"
   }
 }

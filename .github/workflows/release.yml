@@ -9,9 +9,19 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build and publish source archive
-    runs-on: ubuntu-latest
+  build-electron:
+    name: Build Electron installer (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            eb_args: --win
+          # Uncomment to also ship macOS DMG:
+          # - os: macos-latest
+          #   eb_args: --mac
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout Scopic
@@ -25,6 +35,9 @@ jobs:
           repository: firelex/open_teamsuzie
           path: teamsuzie_oss
 
+      # Mirror teamsuzie_oss to the relative path that pnpm link: entries expect.
+      # apps/suzielaw/package.json uses link:../../../../../code/teamsuzie_oss/…
+      # From $GITHUB_WORKSPACE/scopic, that resolves to $GITHUB_WORKSPACE/../../code/teamsuzie_oss.
       - name: Mirror Team Suzie link path
         shell: bash
         run: |
@@ -51,27 +64,22 @@ jobs:
         working-directory: scopic
         run: pnpm install --frozen-lockfile
 
-      - name: Build Scopic
+      - name: Build Scopic (TypeScript + Vite)
         working-directory: scopic
         run: pnpm build
 
-      - name: Create source archive
-        shell: bash
-        run: |
-          artifact="scopic-${GITHUB_REF_NAME}-source.tar.gz"
-          tar \
-            --exclude='.git' \
-            --exclude='node_modules' \
-            --exclude='*/node_modules' \
-            --exclude='.dev-logs' \
-            --exclude='data' \
-            -czf "$artifact" \
-            -C scopic .
-          echo "artifact=$artifact" >> "$GITHUB_ENV"
+      # Bundle the server into a single CJS file so electron-builder never has
+      # to traverse pnpm's junction-based node_modules for @teamsuzie/* packages.
+      - name: Bundle server (esbuild)
+        working-directory: scopic
+        run: node scripts/bundle-server.mjs
 
-      - name: Upload archive to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ env.artifact }}
+      # electron-builder reads GH_TOKEN to upload artifacts to the release that
+      # was created by the tag push. It produces:
+      #   • Scopic Setup <version>.exe  — the NSIS installer users download
+      #   • latest.yml                  — metadata read by electron-updater
+      - name: Package and publish Electron installer
+        working-directory: scopic
+        run: pnpm exec electron-builder ${{ matrix.eb_args }} --publish always
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
