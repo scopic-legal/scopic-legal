@@ -138,8 +138,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = "${{ github.ref_name }}"
-          $assets = Get-ChildItem dist-electron -File -Recurse |
-            Where-Object { $_.Name -match '(\.exe$|\.exe\.blockmap$|^latest\.yml$)' }
+          $assets = Get-ChildItem dist-electron -File |
+            Where-Object { $_.Name -match '(^Scopic\.Setup\..*\.exe$|^Scopic\.Setup\..*\.exe\.blockmap$|^latest\.yml$)' }
 
           if (-not $assets) {
             Write-Host "::error::No installer assets found in dist-electron"
