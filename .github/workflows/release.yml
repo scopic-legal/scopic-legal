@@ -35,6 +35,14 @@ jobs:
           repository: firelex/open_teamsuzie
           path: teamsuzie_oss
 
+      - name: Mirror Team Suzie link path
+        shell: bash
+        run: |
+          target="../../code/teamsuzie_oss"
+          mkdir -p "$(dirname "$target")"
+          rm -rf "$target"
+          cp -R "$GITHUB_WORKSPACE/teamsuzie_oss" "$target"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
