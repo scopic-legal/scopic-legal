@@ -74,6 +74,28 @@ jobs:
         working-directory: scopic
         run: node scripts/bundle-server.mjs
 
+      # pnpm creates Windows directory junctions for node_modules entries.
+      # electron-builder's @electron/rebuild cannot follow junctions to find
+      # binding.gyp, so native module rebuild fails. Replace the two native
+      # module junctions with real directory copies before packaging.
+      - name: Flatten native module junctions (Windows)
+        if: runner.os == 'Windows'
+        working-directory: scopic
+        shell: pwsh
+        run: |
+          foreach ($pkg in @('better-sqlite3', 'sqlite-vec')) {
+            $junctionPath = "node_modules\$pkg"
+            $item = Get-Item $junctionPath -ErrorAction SilentlyContinue
+            if ($item -and $item.LinkType) {
+              $realPath = $item.Target
+              Write-Host "Flattening junction: $junctionPath -> $realPath"
+              Remove-Item $junctionPath
+              Copy-Item $realPath $junctionPath -Recurse -Force
+            } else {
+              Write-Host "$junctionPath is already a real directory or does not exist"
+            }
+          }
+
       # electron-builder reads GH_TOKEN to upload artifacts to the release that
       # was created by the tag push. It produces:
       #   • Scopic Setup <version>.exe  — the NSIS installer users download
@@ -83,3 +105,4 @@ jobs:
         run: pnpm exec electron-builder ${{ matrix.eb_args }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
