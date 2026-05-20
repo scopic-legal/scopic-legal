@@ -119,3 +119,16 @@ jobs:
         with:
           name: electron-builder-log-${{ matrix.os }}
           path: scopic/eb-build.log
+
+      - name: Print electron-builder log to step summary (on failure)
+        if: failure()
+        working-directory: scopic
+        shell: pwsh
+        run: |
+          if (Test-Path eb-build.log) {
+            $lines = Get-Content eb-build.log
+            Add-Content $env:GITHUB_STEP_SUMMARY "## electron-builder log (last 120 lines)"
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+            $lines | Select-Object -Last 120 | ForEach-Object { Add-Content $env:GITHUB_STEP_SUMMARY $_ }
+            Add-Content $env:GITHUB_STEP_SUMMARY '```'
+          }
