@@ -118,7 +118,7 @@ jobs:
         working-directory: scopic
         shell: pwsh
         run: |
-          $out = pnpm exec electron-builder ${{ matrix.eb_args }} --publish always 2>&1
+          $out = pnpm exec electron-builder ${{ matrix.eb_args }} --publish never 2>&1
           $code = $LASTEXITCODE
           $out | ForEach-Object { Write-Host $_ }
           if ($code -ne 0) {
@@ -130,3 +130,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
+
+      - name: Upload installer assets to GitHub release
+        working-directory: scopic
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $assets = Get-ChildItem dist-electron -File -Recurse |
+            Where-Object { $_.Name -match '(\.exe$|\.exe\.blockmap$|^latest\.yml$)' }
+
+          if (-not $assets) {
+            Write-Host "::error::No installer assets found in dist-electron"
+            exit 1
+          }
+
+          $assets | ForEach-Object {
+            Write-Host "Uploading $($_.FullName)"
+            gh release upload $tag $_.FullName --repo "${{ github.repository }}" --clobber
+          }
