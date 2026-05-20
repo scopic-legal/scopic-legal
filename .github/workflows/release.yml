@@ -102,7 +102,20 @@ jobs:
       #   • latest.yml                  — metadata read by electron-updater
       - name: Package and publish Electron installer
         working-directory: scopic
-        run: pnpm exec electron-builder ${{ matrix.eb_args }} --publish always
+        shell: pwsh
+        run: |
+          pnpm exec electron-builder ${{ matrix.eb_args }} --publish always 2>&1 |
+            Tee-Object -FilePath eb-build.log
+          $code = $LASTEXITCODE
+          Get-Content eb-build.log | Select-Object -Last 80
+          exit $code
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
+
+      - name: Upload electron-builder log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: electron-builder-log-${{ matrix.os }}
+          path: scopic/eb-build.log
