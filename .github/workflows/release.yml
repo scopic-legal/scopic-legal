@@ -96,6 +96,20 @@ jobs:
             }
           }
 
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          gh release view $tag --repo "${{ github.repository }}" 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag `
+              --repo "${{ github.repository }}" `
+              --title "Scopic $tag" `
+              --notes "Auto-update release. Download the Windows installer asset named Scopic Setup $($tag.TrimStart('v')).exe."
+          }
+
       # electron-builder reads GH_TOKEN to upload artifacts to the release that
       # was created by the tag push. It produces:
       #   • Scopic Setup <version>.exe  — the NSIS installer users download
