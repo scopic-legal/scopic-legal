@@ -1,8 +1,8 @@
-import type { RedlineParagraph } from '@teamsuzie/ui';
+import type { RedlineParagraph } from '../components/tracked-changes-panel.js';
 
 /**
  * Shared redline endpoint adapters for the chat pages. Each one wraps
- * the suzielaw server route (`/api/files/:session/:file/...`) and
+ * the Scopic server route (`/api/files/:session/:file/...`) and
  * normalizes the response into the upstream `@teamsuzie/ui`
  * `RedlinePanelContent` / `TrackedChangesPanel` contracts (kinds in
  * `'equal' | 'insert' | 'delete'` naming).

@@ -1,24 +1,101 @@
 {
-  "name": "suzielaw",
-  "version": "0.1.0",
+  "name": "scopic",
+  "version": "1.0.0",
   "private": true,
-  "description": "OSS legal-AI platform built on Team Suzie — open alternative to Harvey",
+  "description": "Scopic legal AI platform built on Team Suzie",
   "license": "MIT",
+  "main": "electron/main.js",
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
   },
   "scripts": {
-    "deps:build": "cd ../open_teamsuzie && pnpm -r --filter './packages/**' build",
-    "dev": "pnpm --filter @suzielaw/assistant dev",
+    "deps:build": "cd ../../../code/teamsuzie_oss && pnpm install --frozen-lockfile && pnpm -r --filter \"./packages/**\" build",
+    "dev": "pnpm --filter @scopic/assistant dev",
     "dev:full": "bash scripts/dev-up.sh",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "electron": "electron .",
+    "electron:dev": "cross-env NODE_ENV=development electron .",
+    "dist": "pnpm build && electron-builder",
+    "dist:mac": "pnpm build && electron-builder --mac",
+    "dist:win": "pnpm build && electron-builder --win",
+    "dist:linux": "pnpm build && electron-builder --linux"
   },
   "packageManager": "pnpm@9.0.0",
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3"
     ]
+  },
+  "build": {
+    "appId": "com.scopic.app",
+    "productName": "Scopic",
+    "asar": false,
+    "directories": {
+      "output": "dist-electron"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ezazahamad2003",
+        "repo": "scopic-legal"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "files": [
+      "electron/**/*",
+      "apps/suzielaw/**/*",
+      "!apps/suzielaw/client/node_modules/.vite"
+    ],
+    "extraResources": [
+      {
+        "from": "../../../code/teamsuzie_oss",
+        "to": "teamsuzie_oss",
+        "filter": [
+          "**/*",
+          "!**/node_modules"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3"
   }
 }

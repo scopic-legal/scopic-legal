@@ -1,7 +1,7 @@
 {
-  "name": "@suzielaw/assistant-client",
+  "name": "@scopic/assistant-client",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,10 +10,10 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@teamsuzie/citations": "link:../../../../open_teamsuzie/packages/citations",
-    "@teamsuzie/chats": "link:../../../../open_teamsuzie/packages/chats",
-    "@teamsuzie/grid-review": "link:../../../../open_teamsuzie/packages/grid-review",
-    "@teamsuzie/ui": "link:../../../../open_teamsuzie/packages/ui",
+    "@teamsuzie/citations": "link:../../../../../../code/teamsuzie_oss/packages/citations",
+    "@teamsuzie/chats": "link:../../../../../../code/teamsuzie_oss/packages/chats",
+    "@teamsuzie/grid-review": "link:../../../../../../code/teamsuzie_oss/packages/grid-review",
+    "@teamsuzie/ui": "link:../../../../../../code/teamsuzie_oss/packages/ui",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.1.1"

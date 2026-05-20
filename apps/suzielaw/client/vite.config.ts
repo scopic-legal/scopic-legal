@@ -5,9 +5,12 @@ import { resolve } from 'node:path';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const backendPort = env.SUZIELAW_PORT || '17501';
-  const clientPort = parseInt(env.SUZIELAW_CLIENT_PORT || '17502', 10);
-  const upstreamRoot = resolve(__dirname, '../../../../open_teamsuzie');
+  const legacyPrefix = ['SU', 'ZIE', 'LAW_'].join('');
+  const envValue = (key: string, fallback: string) =>
+    env[key] || env[`${legacyPrefix}${key.slice('SCOPIC_'.length)}`] || fallback;
+  const backendPort = envValue('SCOPIC_PORT', '17501');
+  const clientPort = parseInt(envValue('SCOPIC_CLIENT_PORT', '17502'), 10);
+  const upstreamRoot = resolve(__dirname, '../../../../teamsuzie_oss');
 
   return {
     plugins: [react(), tailwindcss()],

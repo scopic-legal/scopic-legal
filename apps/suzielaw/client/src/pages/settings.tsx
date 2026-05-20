@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AppShellContent,
   LocalModelConfigDialog,
@@ -7,6 +7,11 @@ import {
   type ModelOption,
 } from '@teamsuzie/ui';
 import { MODELS, MODEL_PROVIDER_ID } from '../data/models.js';
+import {
+  OLLAMA_MODEL_ID,
+  OLLAMA_TAGS_URL,
+  SELECTED_OLLAMA_MODEL_KEY,
+} from '../data/ollama.js';
 import { useModelSettings } from '../hooks/use-model-settings.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import {
@@ -14,13 +19,107 @@ import {
   type ProviderDisplay,
 } from '../components/provider-keys-card.js';
 
-const SELECTED_MODEL_KEY = 'suzielaw:selected-model';
+const SELECTED_MODEL_KEY = 'scopic:selected-model';
+const OLLAMA_NOT_RUNNING =
+  'Ollama is not running. Install Ollama and start it, then return here.';
 
 interface Props {
   /** Server's configured default model — used as fallback when nothing is in localStorage. */
   defaultModel?: string;
   /** Cloud BYOK providers from `/api/health.cloudProviders`. */
   cloudProviders?: ProviderDisplay[];
+}
+
+function OllamaModelSelect({ active }: { active: boolean }) {
+  const [models, setModels] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(SELECTED_OLLAMA_MODEL_KEY) ?? '';
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function persistSelection(model: string) {
+    setSelected(model);
+    if (typeof window === 'undefined') return;
+    if (model) {
+      window.localStorage.setItem(SELECTED_OLLAMA_MODEL_KEY, model);
+    } else {
+      window.localStorage.removeItem(SELECTED_OLLAMA_MODEL_KEY);
+    }
+  }
+
+  useEffect(() => {
+    if (!active) return;
+
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    void (async () => {
+      try {
+        const response = await fetch(OLLAMA_TAGS_URL, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(`Ollama tags failed (${response.status})`);
+        const data = (await response.json()) as {
+          models?: Array<{ name?: string; model?: string }>;
+        };
+        const names = (data.models ?? [])
+          .map((model) => model.name ?? model.model ?? '')
+          .map((name) => name.trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        setModels(names);
+        if (names.length > 0 && !names.includes(selected)) {
+          persistSelection(names[0]!);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setModels([]);
+          setError(OLLAMA_NOT_RUNNING);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [active, selected]);
+
+  if (!active) return null;
+
+  return (
+    <div className="lg:col-span-2 border border-foreground/15 bg-background px-4 py-3">
+      <label
+        htmlFor="ollama-model-select"
+        className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/50"
+      >
+        Ollama model
+      </label>
+      <select
+        id="ollama-model-select"
+        value={selected}
+        disabled={loading || models.length === 0}
+        onChange={(event) => persistSelection(event.target.value)}
+        className="mt-2 block w-full border border-foreground/30 bg-background px-3 py-2.5 font-mono text-[13px] text-foreground focus:border-foreground focus:outline-none focus:ring-1 focus:ring-saffron-400 disabled:opacity-50"
+      >
+        {models.length === 0 ? (
+          <option value="">{loading ? 'Loading Ollama models...' : 'No models found'}</option>
+        ) : (
+          models.map((model) => (
+            <option key={model} value={model}>
+              {model}
+            </option>
+          ))
+        )}
+      </select>
+      {error && (
+        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
@@ -63,23 +162,25 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
           Settings.
         </h1>
         <p className="mt-3 font-serif text-[15px] italic text-foreground/65">
-          Model picker and provider keys.
+          Connect Counsel to an AI provider and pick your model.
         </p>
       </div>
       <AppShellContent className="px-8 pt-6 pb-12">
         <div className="grid gap-4 lg:grid-cols-2">
+          {cloudProviders.length > 0 && (
+            <ProviderKeysCard providers={cloudProviders} />
+          )}
+
           <ModelPickerCard
             models={models}
             selected={selectedModel}
             onSelect={setSelectedModel}
             title="Pick the model that powers Counsel"
-            hint="Changes apply on the next message. The demo-budget default is always available; other cloud models appear once you set a provider key below."
+            hint="Changes apply on the next message. Once you add a provider key above, the matching models become available here."
             onConfigure={(model) => setConfiguringModel(model)}
           />
 
-          {cloudProviders.length > 0 && (
-            <ProviderKeysCard providers={cloudProviders} />
-          )}
+          <OllamaModelSelect active={selectedModel === OLLAMA_MODEL_ID} />
         </div>
       </AppShellContent>
 

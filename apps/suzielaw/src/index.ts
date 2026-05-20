@@ -74,7 +74,13 @@ import { buildTemplateTools } from './tools/templates.js';
 import { applyPersona, createPersonasRouter, PersonaRegistry } from '@teamsuzie/personas';
 import { createKbSearchTool } from '@teamsuzie/kb';
 import { createModelSettingsRouter, ModelSettingsStore } from '@teamsuzie/model-settings';
-import { CLOUD_PROVIDERS, CLOUD_PROVIDER_IDS, providerForModel, wireModelIdFor } from './cloud-providers.js';
+import {
+  CLOUD_PROVIDERS,
+  CLOUD_PROVIDER_IDS,
+  extraBodyForProvider,
+  providerForModel,
+  wireModelIdFor,
+} from './cloud-providers.js';
 import { createWorkspacesRouter, WorkspacesStore } from '@teamsuzie/workspaces';
 import { DocumentVersionsStore } from '@teamsuzie/document-versions';
 import { MembersStore } from '@teamsuzie/sharing';
@@ -93,15 +99,18 @@ import { WorkflowsStore, createWorkflowsRouter } from '@teamsuzie/workflows';
 import { seedAndMigrateWorkflows } from './seed-workflows.js';
 import { parseResponse } from '@teamsuzie/citations';
 import type { FileRecord } from './files.js';
-import { WorkspaceRag } from '@teamsuzie/kb';
 import { buildKbStore, createKbRouter } from './kb.js';
-import { draftColumnPrompt } from '@teamsuzie/markdown-document';
+import { WorkspaceRag } from './rag.js';
+import { draftColumnPrompt } from './column-prompt.js';
 import { buildReviewWorkbook } from './reviews-export.js';
 import { runDocumentDiff } from './diff-engine.js';
-import { composeRedlineDocx, redlineDownloadFilename } from './redline-export.js';
+import {
+  composeRedlineDocx,
+  extractRedlineParagraphs,
+  redlineDownloadFilename,
+} from './redline-export.js';
 import {
   acceptRevision,
-  extractRedlineParagraphs,
   loadDocx,
   rejectRevision,
 } from '@teamsuzie/docx';
@@ -115,6 +124,7 @@ const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
 const fileStore = new InMemoryFileStore();
 const docStore = new InMemoryDocumentStore();
 const tokenBudget = new TokenBudgetStore(db, config.tokenBudget.defaultLimit);
+const OLLAMA_PROVIDER_ID = 'ollama';
 
 let skillState: SkillLoadResult = { skills: [], systemPrompt: '', derivedHosts: [] };
 let mcp: McpManager = { tools: [], status: [], shutdown: async () => {} };
@@ -149,7 +159,7 @@ if (personaRegistry.listBuiltins().length > 0) {
 const modelSettings = new ModelSettingsStore({ db, envRegistry: config.modelAgents });
 
 // Workspaces (legal apps surface them as "Matters") — schema lives upstream;
-// the suzielaw API mounts this at /api/matters to match the UI label.
+// the Scopic API mounts this at /api/matters to match the UI label.
 const workspaces = new WorkspacesStore({ db });
 
 // Document version chains. Every matter-doc upload records a
@@ -306,7 +316,7 @@ const sequelizeService = new SequelizeService(
 );
 const sessionService = new SessionService(sharedAuthConfig);
 
-// Stripe billing. When SUZIELAW_STRIPE_SECRET_KEY is unset (free / OSS demo
+// Stripe billing. When SCOPIC_STRIPE_SECRET_KEY is unset (free / OSS demo
 // mode), the service object still exists but every Stripe call throws and
 // requireCreditedOrg returns 402 for everyone. The DB tables are created
 // either way so flipping the env var later doesn't need a migration.
@@ -332,7 +342,7 @@ if (config.billing.enabled) {
 app.use(express.json({ limit: '2mb' }));
 sessionService.init(app);
 app.use(createCsrfMiddleware({
-    cookieName: 'suzielaw.csrf',
+    cookieName: 'scopic.csrf',
     // Mothership webhooks authenticate via X-Platform-Token (handled by
     // createPlatformTokenGuard inside the router) — they have no CSRF cookie
     // because they're server-to-server, not browser-driven.
@@ -358,7 +368,7 @@ app.use('/api/billing', createBillingRouter({
 
 // Paywall middleware applied to cost-incurring routes below. When billing is
 // disabled (no Stripe key) we skip the check entirely so OSS users can run
-// suzielaw without a Stripe account — flip SUZIELAW_STRIPE_SECRET_KEY on to
+// Scopic without a Stripe account — flip SCOPIC_STRIPE_SECRET_KEY on to
 // enforce pay-to-use.
 const requireCreditedOrg: express.RequestHandler = config.billing.enabled
   ? createRequireCreditedOrg({ service: billingService })
@@ -899,14 +909,14 @@ const platformBridgeConfig: PlatformBridgeConfig = {
 // delegates to runWebhookChatTurn from @teamsuzie/platform-bridge, which owns
 // the "drain runChatTurn into a single string + frame the prompt for an
 // agent-to-agent reply" boilerplate. We just supply the agent target, tools,
-// and base system prompt — all suzielaw-specific.
+// and base system prompt — all Scopic-specific.
 if (config.platform?.token) {
     app.use('/api/webhook/mothership', createWebhookRouter(platformBridgeConfig, {
         onInstall: async (ctx) => {
-            console.log(`[SUZIELAW] Installed by org ${ctx.org_id}, agent_id=${ctx.agent_id}`);
+            console.log(`[SCOPIC] Installed by org ${ctx.org_id}, agent_id=${ctx.agent_id}`);
         },
         onUninstall: async (ctx) => {
-            console.log(`[SUZIELAW] Uninstalled by org ${ctx.org_id}`);
+            console.log(`[SCOPIC] Uninstalled by org ${ctx.org_id}`);
         },
         onDirectMessage: async (ctx) => {
             try {
@@ -924,8 +934,8 @@ if (config.platform?.token) {
                 });
                 return { response };
             } catch (err: any) {
-                console.error(`[SUZIELAW] DM from ${ctx.from_agent.name} failed:`, err.message);
-                return { response: `[Suzie Law could not respond: ${err.message}]` };
+                console.error(`[SCOPIC] DM from ${ctx.from_agent.name} failed:`, err.message);
+                return { response: `[Scopic could not respond: ${err.message}]` };
             }
         },
     }));
@@ -950,8 +960,18 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   // model's provider; the chat then routes to the provider's public
   // endpoint with the user's key, bypassing demo metering.
   const requestedModelRaw = String(req.body?.model || '').trim();
+  const requestedModelProvider = String(req.body?.modelProvider || '').trim();
+  const isOllamaRequest =
+    requestedModelProvider === OLLAMA_PROVIDER_ID && requestedModelRaw.length > 0;
+  if (requestedModelProvider === OLLAMA_PROVIDER_ID && requestedModelRaw === OLLAMA_PROVIDER_ID) {
+    res.status(400).json({
+      error: 'ollama_model_required',
+      message: 'Select an Ollama model in Settings before sending a message.',
+    });
+    return;
+  }
   const sessionEmailEarly = getSessionUser(req)?.email;
-  if (requestedModelRaw && requestedModelRaw !== config.agent.model) {
+  if (requestedModelRaw && requestedModelRaw !== config.agent.model && !isOllamaRequest) {
     const provider = providerForModel(requestedModelRaw);
     const hasUserKey = !!(
       provider &&
@@ -989,6 +1009,13 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   // bypassing the demo-budget path entirely.
   const effectiveModel = requestedModel || persona?.model || config.agent.model;
   const userRegistry = modelSettings.effectiveRegistry(ownerEmail ?? null);
+  if (isOllamaRequest) {
+    const ollamaTarget = userRegistry[OLLAMA_PROVIDER_ID] ?? config.modelAgents[OLLAMA_PROVIDER_ID];
+    userRegistry[requestedModelRaw] = {
+      ...ollamaTarget,
+      model: requestedModelRaw,
+    };
+  }
   // BYOK overlay: for any model that maps to a known cloud provider AND
   // for which the caller has a saved key, rewrite the registry entry to
   // route the request through the provider's public endpoint with the
@@ -1008,6 +1035,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
       baseUrl: cloudProvider.baseUrl,
       apiKey: userKey,
       model: wireModelIdFor(uiModelId),
+      extraBody: extraBodyForProvider(cloudProvider),
     };
   }
   overlayBYOK(effectiveModel);
@@ -1325,7 +1353,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
                 baseUrl: titleAgent.baseUrl,
                 apiKey: titleAgent.apiKey,
                 model: titleAgent.model,
-                extraBody: config.agent.extraBody,
+                extraBody: titleAgent.extraBody,
               });
               if (!polished) return;
               const current = chats.getChat(persistedChatId);
@@ -1864,7 +1892,7 @@ async function bootstrapAuthDb(): Promise<void> {
     console.log('[DB] shared-auth schema synced (Postgres)');
   } catch (err) {
     console.error(
-      '[DB] Cannot connect to Postgres for shared-auth. Make sure docker/docker-compose.yml is up or SUZIELAW_POSTGRES_URI points at a running database.',
+      '[DB] Cannot connect to Postgres for shared-auth. Make sure docker/docker-compose.yml is up or SCOPIC_POSTGRES_URI points at a running database.',
     );
     throw err;
   }
@@ -1904,18 +1932,18 @@ async function main(): Promise<void> {
     registerWithPlatform(
       { platformUrl: config.platform.url, registrationToken: config.platform.registrationToken },
       {
-        slug: 'suzielaw',
-        name: 'Suzie Law',
+        slug: 'scopic',
+        name: 'Scopic',
         description: 'Open-source AI legal assistant — research, drafting, document review',
-        provider_name: 'Team Suzie',
+        provider_name: 'Scopic',
         base_url: config.publicUrl,
         health_endpoint: '/api/health',
         chat_endpoint: '/api/chat',
         webhook_endpoint: '/api/webhook/mothership',
         capabilities: { tools: ['vector_search', 'legal_research', 'document_drafting'], features: ['sse_streaming'] },
-        version: '0.1.0',
+        version: '1.0.0',
       }
-    ).catch(err => console.warn('[SUZIELAW] Platform registration failed:', err.message));
+    ).catch(err => console.warn('[SCOPIC] Platform registration failed:', err.message));
   }
 
   const server = app.listen(config.port, () => {

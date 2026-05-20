@@ -54,7 +54,7 @@ function useDocStates(): Map<string, DocTabState> {
 }
 
 /**
- * Suzielaw-side wrapper around `useSidePanel` for opening document
+ * Scopic-side wrapper around `useSidePanel` for opening document
  * previews as side-panel tabs. The tab id keys on
  * `matter:<matterId>:<fileId>`, so re-clicking a citation for the
  * same doc focuses the existing tab instead of duplicating it; a new

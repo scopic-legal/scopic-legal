@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArtifactPanel,
   Button,
@@ -10,29 +10,33 @@ import {
   PromptCardDescription,
   PromptCardTitle,
   ToolUseStatus,
-  TrackedChangesPanel,
   cn,
   humanSize,
   useAutoResizeTextarea,
-  useChatComposer,
   useSelectedModel,
   type ArtifactSnapshot,
   type Persona,
-  type ProposeEditsResult,
   type ToolEvent,
 } from '@teamsuzie/ui';
 import { parseResponse, SENTINEL_OPEN, type Citation } from '@teamsuzie/citations';
 import type { ChatMessage as PersistedChatMessage } from '@teamsuzie/chats';
 import { useDocSidePanel } from '../components/document-side-panel.js';
 import { useAssistantChats } from '../hooks/use-assistant-chats.js';
+import { useChatComposer } from '../hooks/use-chat-composer.js';
+import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { PaywallDialog } from '../components/paywall-dialog.js';
+import { selectedModelPayload } from '../data/ollama.js';
+import {
+  TrackedChangesPanel,
+  type ProposeEditsResult,
+} from '../components/tracked-changes-panel.js';
 import {
   loadRedline,
   redlineDownloadHref,
   resolveRevisions,
 } from '../lib/redline-api.js';
 
-const SELECTED_MODEL_KEY = 'suzielaw:selected-model';
+const SELECTED_MODEL_KEY = 'scopic:selected-model';
 
 interface Message {
   id: string;
@@ -367,6 +371,9 @@ export function AssistantPage({
   // Reads the model selection persisted by the Settings page (if any).
   // Server falls back to its configured default when undefined.
   const [selectedModel] = useSelectedModel(SELECTED_MODEL_KEY);
+  // Used to detect first-run: when a 401/API-key error fires and no
+  // provider key has ever been saved, auto-navigate to Settings.
+  const providerKeys = useProviderKeys();
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -390,6 +397,21 @@ export function AssistantPage({
     }
     prevStatus.current = status;
   }, [status]);
+
+  // First-run: if a 401 / API-key error fires and the user has no provider
+  // key saved yet, redirect them to Settings automatically after a short
+  // delay so they understand what to do.
+  useEffect(() => {
+    if (!error) return;
+    if (!/api.?key|401|api_key|authorization|bearer|no.*key|didn.*provide/i.test(error)) return;
+    if (providerKeys.loading) return;
+    const hasAnyKey = providerKeys.providers.some((p) => p.hasKey);
+    if (hasAnyKey) return;
+    const timer = setTimeout(() => {
+      navigate('/settings');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [error, providerKeys.loading, providerKeys.providers, navigate]);
 
   async function uploadFiles(files: FileList) {
     setUploading(true);
@@ -621,6 +643,7 @@ export function AssistantPage({
     abortRef.current = ac;
 
     try {
+      const modelPayload = selectedModelPayload(selectedModel);
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -631,7 +654,7 @@ export function AssistantPage({
           message: text,
           history: nextHistory.slice(0, -1),
           attachmentIds: sentAttachmentIds,
-          model: selectedModel,
+          ...modelPayload,
           personaId: persona?.id,
           workflowId: pendingWorkflowId ?? undefined,
         }),
@@ -961,9 +984,23 @@ export function AssistantPage({
       <div className="border-t border-foreground/15 bg-background px-6 py-5">
         <div className="mx-auto w-full max-w-3xl">
           {error && (
-            <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.10em] text-destructive">
-              {error}
-            </p>
+            <div className="mb-2 border border-destructive/30 bg-destructive/5 px-3 py-2">
+              {/api.?key|401|api_key|authorization|bearer|no.*key|didn.*provide/i.test(error) ? (
+                <p className="font-mono text-[11px] uppercase tracking-[0.10em] text-destructive">
+                  Counsel needs an API key to respond.{' '}
+                  <Link
+                    to="/settings"
+                    className="underline underline-offset-2 hover:text-destructive/80"
+                  >
+                    Go to Settings to add one →
+                  </Link>
+                </p>
+              ) : (
+                <p className="font-mono text-[11px] uppercase tracking-[0.10em] text-destructive">
+                  {error}
+                </p>
+              )}
+            </div>
           )}
           <input
             ref={fileInputRef}

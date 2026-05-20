@@ -17,12 +17,9 @@ import {
   Sparkles,
   Square,
   ToolUseStatus,
-  TrackedChangesPanel,
   cn,
   useAutoResizeTextarea,
-  useChatComposer,
   useSelectedModel,
-  type ProposeEditsResult,
   type ToolEvent,
 } from '@teamsuzie/ui';
 import { parseResponse, SENTINEL_OPEN, type Citation } from '@teamsuzie/citations';
@@ -30,14 +27,20 @@ import type { ChatMessage as PersistedChatMessage } from '@teamsuzie/chats';
 import { useDocSidePanel } from '../components/document-side-panel.js';
 import { useMatter } from '../hooks/use-matter.js';
 import { useMatterChats } from '../hooks/use-matter-chats.js';
+import { useChatComposer } from '../hooks/use-chat-composer.js';
 import { WorkflowPickerDialog } from '../components/workflow-picker-dialog.js';
+import { selectedModelPayload } from '../data/ollama.js';
+import {
+  TrackedChangesPanel,
+  type ProposeEditsResult,
+} from '../components/tracked-changes-panel.js';
 import {
   loadRedline,
   redlineDownloadHref,
   resolveRevisions,
 } from '../lib/redline-api.js';
 
-const SELECTED_MODEL_KEY = 'suzielaw:selected-model';
+const SELECTED_MODEL_KEY = 'scopic:selected-model';
 
 interface UiMessage {
   id: string;
@@ -324,6 +327,7 @@ export function MatterChatPage() {
     abortRef.current = ac;
 
     try {
+      const modelPayload = selectedModelPayload(selectedModel);
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -337,7 +341,7 @@ export function MatterChatPage() {
           message: text,
           history: historyForServer,
           attachmentIds: [],
-          model: selectedModel,
+          ...modelPayload,
           workflowId: sentWorkflowId ?? undefined,
         }),
         signal: ac.signal,

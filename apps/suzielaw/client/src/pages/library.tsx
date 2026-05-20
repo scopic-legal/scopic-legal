@@ -154,7 +154,7 @@ export function LibraryPage() {
   function handleExport() {
     const csv = buildCsv(wf.workflows);
     const stamp = new Date().toISOString().slice(0, 10);
-    downloadCsv(`suzielaw-workflows-${stamp}.csv`, csv);
+    downloadCsv(`scopic-workflows-${stamp}.csv`, csv);
   }
 
   return (

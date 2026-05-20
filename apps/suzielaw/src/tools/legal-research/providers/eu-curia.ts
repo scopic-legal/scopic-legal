@@ -28,7 +28,7 @@ function sparqlEscape(s: string): string {
 async function sparqlSelect(query: string): Promise<SparqlResults> {
   const params = new URLSearchParams({ query, format: 'application/sparql-results+json' });
   return fetchJson<SparqlResults>(`${SPARQL_ENDPOINT}?${params.toString()}`, {
-    headers: { Accept: 'application/sparql-results+json', 'User-Agent': 'suzielaw-legal-research/1.0' },
+    headers: { Accept: 'application/sparql-results+json', 'User-Agent': 'scopic-legal-research/1.0' },
   });
 }
 

@@ -7,8 +7,12 @@ import {
   type LlmStream,
   type RunCellAdapter,
 } from '@teamsuzie/grid-review';
-import { rewriteQueryAsHypothetical, type KbSearchHit, type WorkspaceRag } from '@teamsuzie/kb';
 import type { Request } from 'express';
+import {
+  rewriteQueryAsHypothetical,
+  type KbSearchHit,
+  type WorkspaceRag,
+} from './rag.js';
 
 import type { CellChatMessage } from '@teamsuzie/grid-review';
 import type { InMemoryFileStore } from './files.js';

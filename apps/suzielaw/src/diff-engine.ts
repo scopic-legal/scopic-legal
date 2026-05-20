@@ -1,16 +1,38 @@
 import {
   alignParagraphs,
   diffWords,
-  type DocumentDiffResult,
-  type ParagraphDiffEvent,
 } from '@teamsuzie/docx-diff';
 import { bodyParagraphTexts, loadDocx } from '@teamsuzie/docx';
 import type { FileRecord } from './files.js';
 import { convertFileToMarkdown } from './document-tools.js';
 
-// Re-export upstream diff types so existing suzielaw imports
-// (`from './diff-engine.js'`) keep working unchanged.
-export type { DocumentDiffResult, ParagraphDiffEvent } from '@teamsuzie/docx-diff';
+export type ParagraphDiffEvent =
+  | { kind: 'unchanged'; leftIndex: number; rightIndex: number; text: string }
+  | { kind: 'deleted'; leftIndex: number; text: string }
+  | { kind: 'inserted'; rightIndex: number; text: string }
+  | {
+      kind: 'modified';
+      leftIndex: number;
+      rightIndex: number;
+      leftText: string;
+      rightText: string;
+      ops: ReturnType<typeof diffWords>;
+      similarity: number;
+      moved?: boolean;
+    };
+
+export interface DocumentDiffResult {
+  left: { name: string; paragraphs: number };
+  right: { name: string; paragraphs: number };
+  stats: {
+    unchanged: number;
+    modified: number;
+    deleted: number;
+    inserted: number;
+    moved: number;
+  };
+  events: ParagraphDiffEvent[];
+}
 
 const DOCX_MIME =
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document';

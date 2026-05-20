@@ -26,7 +26,7 @@ export function PersonasPage() {
   // Same key as App.tsx so the sidebar's "Default Counsel" / picker selection
   // stays in sync with whatever the user activates from this page.
   const [selectedPersonaId, setSelectedPersonaId] = useSelectedPersona(
-    'suzielaw:selected-persona',
+    'scopic:selected-persona',
   );
   const [tools, setTools] = useState<ToolEntry[]>([]);
 

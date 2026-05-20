@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
 import type { SessionUser } from '../hooks/use-session.js';
 
 interface Props {
@@ -9,8 +8,6 @@ interface Props {
 }
 
 export function Protected({ user, loading, children }: Props) {
-  const location = useLocation();
-
   if (loading && !user) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -20,7 +17,11 @@ export function Protected({ user, loading, children }: Props) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Starting session...
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -1,35 +1,35 @@
-# suzielaw
+# Scopic
 
-The Suzie Law chat assistant. Express + React + Vite, copied from Team Suzie's `starter-chat` and adapted with legal-specific content.
+The Scopic chat assistant. Express + React + Vite, copied from Team Suzie's `starter-chat` and adapted with legal-specific content.
 
-For repo-level context (layout, sibling-clone setup, why a separate repo) see the top-level [`suzielaw/README.md`](../../README.md). For the underlying chat shell, tool-use loop, skills bridge, and MCP client — none of which we re-implemented — see the upstream [`starter-chat` README](https://github.com/firelex/open_teamsuzie/blob/main/apps/starters/starter-chat/README.md). This README only covers what's app-specific.
+For repo-level context (layout, sibling-clone setup, why a separate repo) see the top-level [repo README](../../README.md). For the underlying chat shell, tool-use loop, skills bridge, and MCP client — none of which we re-implemented — see the upstream [`starter-chat` README](https://github.com/firelex/open_teamsuzie/blob/main/apps/starters/starter-chat/README.md). This README only covers what's app-specific.
 
 ## Run
 
 ```bash
 cp .env.example .env
-#   → fill in SUZIELAW_AGENT_BASE_URL and SUZIELAW_AGENT_API_KEY
-#   → optionally add SUZIELAW_GOOGLE_CLIENT_ID / SUZIELAW_GOOGLE_CLIENT_SECRET
-pnpm --filter @suzielaw/assistant dev
+#   → fill in SCOPIC_AGENT_BASE_URL and SCOPIC_AGENT_API_KEY
+#   → optionally add SCOPIC_GOOGLE_CLIENT_ID / SCOPIC_GOOGLE_CLIENT_SECRET
+pnpm --filter @scopic/assistant dev
 ```
 
 Open <http://localhost:17502>.
 
 ## Configuration
 
-Set in `.env`. Same shape as upstream `starter-chat`'s env, with `STARTER_CHAT_` renamed to `SUZIELAW_`. The defaults that matter:
+Set in `.env`. Same shape as upstream `starter-chat`'s env, with `STARTER_CHAT_` renamed to `SCOPIC_`. The defaults that matter:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SUZIELAW_AGENT_BASE_URL` | `https://dashscope-intl.aliyuncs.com/compatible-mode` | OpenAI-compatible base URL |
-| `SUZIELAW_MODEL` | `qwen3.6-plus` | Model string sent to `/v1/chat/completions` (must support tool use) |
-| `SUZIELAW_AGENT_API_KEY` | — | Bearer token for the model provider |
-| `SUZIELAW_GOOGLE_CLIENT_ID` / `SUZIELAW_GOOGLE_CLIENT_SECRET` | — | Enables the Google sign-in button |
-| `SUZIELAW_PORT` / `SUZIELAW_CLIENT_PORT` | `17501` / `17502` | Backend / frontend ports |
-| `SUZIELAW_TITLE` | `Suzie Law` | App title shown in the sidebar |
-| `SUZIELAW_AGENT_NAME` | `Counsel` | Assistant display name |
-| `SUZIELAW_VECTOR_DB_BASE_URL` | `http://localhost:3006` | Where the `vector_search` tool POSTs |
-| `SUZIELAW_TOOL_MAX_ITERATIONS` | `100` | Cap on tool-use loop turns |
+| `SCOPIC_AGENT_BASE_URL` | `https://dashscope-intl.aliyuncs.com/compatible-mode` | OpenAI-compatible base URL |
+| `SCOPIC_MODEL` | `qwen3.6-plus` | Model string sent to `/v1/chat/completions` (must support tool use) |
+| `SCOPIC_AGENT_API_KEY` | — | Bearer token for the model provider |
+| `SCOPIC_GOOGLE_CLIENT_ID` / `SCOPIC_GOOGLE_CLIENT_SECRET` | — | Enables the Google sign-in button |
+| `SCOPIC_PORT` / `SCOPIC_CLIENT_PORT` | `17501` / `17502` | Backend / frontend ports |
+| `SCOPIC_TITLE` | `Scopic` | App title shown in the sidebar |
+| `SCOPIC_AGENT_NAME` | `Counsel` | Assistant display name |
+| `SCOPIC_VECTOR_DB_BASE_URL` | `http://localhost:3006` | Where the `vector_search` tool POSTs |
+| `SCOPIC_TOOL_MAX_ITERATIONS` | `100` | Cap on tool-use loop turns |
 
 Skills, MCP, and the http-allow-list work exactly as upstream — see the upstream README. The `.env.example` lists all of them with comments.
 
@@ -38,7 +38,7 @@ Skills, MCP, and the http-allow-list work exactly as upstream — see the upstre
 ```
 apps/suzielaw/
   src/                Express backend (auth, chat, files, matters, reviews, KB)
-    config.ts         SUZIELAW_* env config
+    config.ts         SCOPIC_* env config
     index.ts          server bootstrap
     tools/            legal-specific tools (CourtListener, templates, diffs)
   client/
@@ -67,14 +67,14 @@ The `Counsel` assistant can generate `.pptx` slide decks via Team Suzie's `pptx-
    pnpm dev:pptx-agent
    ```
 
-2. **Point suzielaw at it.** In `apps/suzielaw/.env`, uncomment:
+2. **Point Scopic at it.** In `apps/suzielaw/.env`, uncomment:
 
    ```bash
-   SUZIELAW_SKILLS_DIR=../../../open_teamsuzie/packages/skills/templates
-   SUZIELAW_SKILLS_ALLOW=presentations
-   SUZIELAW_SKILL_VAR_PPTX_AGENT_URL=http://localhost:3009
-   SUZIELAW_SKILL_VAR_AGENT_API_KEY=
-   SUZIELAW_SKILL_VAR_AGENT_SLUG=suzielaw
+   SCOPIC_SKILLS_DIR=../../../open_teamsuzie/packages/skills/templates
+   SCOPIC_SKILLS_ALLOW=presentations
+   SCOPIC_SKILL_VAR_PPTX_AGENT_URL=http://localhost:3009
+   SCOPIC_SKILL_VAR_AGENT_API_KEY=
+   SCOPIC_SKILL_VAR_AGENT_SLUG=scopic
    ```
 
 3. **Restart the assistant.** The skill markdown is loaded into the system prompt at startup; the model will know how to call the pptx-agent via `http_request`.
@@ -124,7 +124,7 @@ The assistant ships with thirteen tools that wrap CourtListener's v4 REST API:
 They work unauthenticated (with a low rate limit). For real use, set a token in `.env`:
 
 ```bash
-SUZIELAW_COURTLISTENER_TOKEN=<token from https://www.courtlistener.com/profile/api/>
+SCOPIC_COURTLISTENER_TOKEN=<token from https://www.courtlistener.com/profile/api/>
 ```
 
 The Library page seeds prompts that exercise these tools — case-law research, citation verification, judge profiles, RECAP docket pulls, opinion summaries, and circuit-split surveys.

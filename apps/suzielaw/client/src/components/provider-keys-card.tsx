@@ -83,7 +83,7 @@ function KeyDialog({ open, onOpenChange, provider, onSave }: KeyDialogProps) {
           </DialogTitle>
           <DialogDescription>
             {provider?.hint ??
-              'Your API key is stored locally and only used when you pick a model from this provider.'}
+              'Your API key is stored on this device only and used when Counsel calls this provider.'}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -145,11 +145,17 @@ export function ProviderKeysCard({ providers }: Props) {
   const confirm = useConfirm();
 
   const editing = providers.find((p) => p.id === editingId) ?? null;
+  const hasAnyKey = rows.some((r) => r.hasKey);
 
   return (
-    <SettingsCard label="Provider keys" title="Use your own API keys">
+    <SettingsCard label="Connect to an AI provider" title="Add your API key">
       <p>
-        Pick which providers Counsel can route to with your own credentials. With a key set, the matching cloud models become available in the model picker — and Counsel bills the call against your account, not the demo budget.
+        Counsel needs an API key from one of these providers to respond. Your key is stored on this device only and never shared.
+        {!hasAnyKey && (
+          <span className="ml-1 font-medium text-destructive">
+            No key is set — Counsel cannot respond until you add one.
+          </span>
+        )}
       </p>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {loading ? (

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Start every service Suzie Law needs for local dev: the markitdown-agent
-# (sibling Python service) in the background, then the suzielaw
+# Start every service Scopic needs for local dev: the markitdown-agent
+# (sibling Python service) in the background, then the Scopic
 # (Express + Vite) in the foreground. Ctrl+C cleanly stops both.
 #
 # For the bare chat-only setup (no DOCX conversion / DOCX export, no document
@@ -96,7 +96,7 @@ for i in $(seq 1 60); do
   fi
 done
 
-# --- suzielaw (Express + Vite, ports 17501 + 17502) ---
-log "starting suzielaw (foreground). Ctrl+C to stop everything."
+# --- Scopic (Express + Vite, ports 17501 + 17502) ---
+log "starting Scopic (foreground). Ctrl+C to stop everything."
 cd "$ROOT_DIR"
 pnpm dev

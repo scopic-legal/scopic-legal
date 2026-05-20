@@ -1,10 +1,10 @@
 /**
  * Wraps `window.fetch` to attach the CSRF token (read from the
- * `suzielaw.csrf` cookie) on every same-origin POST/PUT/PATCH/DELETE.
+ * `scopic.csrf` cookie) on every same-origin POST/PUT/PATCH/DELETE.
  * Imported once for its side effects from `main.tsx`.
  */
 
-const COOKIE_NAME = 'suzielaw.csrf';
+const COOKIE_NAME = 'scopic.csrf';
 const HEADER_NAME = 'X-CSRF-Token';
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

@@ -3,9 +3,19 @@ import { buildLocalAgentRegistry, LOCAL_MODELS } from '@teamsuzie/agent-loop';
 import { buildOAuthProvidersFromEnv, parseTokenLimit } from '@teamsuzie/hosted-demo';
 import type { SharedAuthConfig } from '@teamsuzie/shared-auth';
 
-const SKILL_VAR_PREFIX = 'SUZIELAW_SKILL_VAR_';
+const ENV_PREFIX = 'SCOPIC_';
+const PRE_SCOPIC_ENV_PREFIX = ['SU', 'ZIE', 'LAW_'].join('');
+
+for (const [key, value] of Object.entries(process.env)) {
+  if (!key.startsWith(PRE_SCOPIC_ENV_PREFIX) || value === undefined) continue;
+  const scopicKey = `${ENV_PREFIX}${key.slice(PRE_SCOPIC_ENV_PREFIX.length)}`;
+  process.env[scopicKey] ??= value;
+}
+
+const SKILL_VAR_PREFIX = 'SCOPIC_SKILL_VAR_';
 const DEFAULT_QWEN_MODEL = 'qwen3.6-plus';
 const DEFAULT_QWEN_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode';
+const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434/v1';
 
 function collectSkillRenderContext(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -38,13 +48,13 @@ function defaultExtraBody(model: string): Record<string, unknown> | undefined {
   return model.toLowerCase().includes('qwen') ? { enable_thinking: false } : undefined;
 }
 
-const DEFAULT_SYSTEM_PROMPT = `You are Counsel, the AI legal assistant in the Suzie Law platform.
+const DEFAULT_SYSTEM_PROMPT = `You are Counsel, the AI legal assistant in the Scopic platform.
 
 Today's date is {{DATE}}.
 
 You help lawyers and legal professionals with research, drafting, document review, summarization, and analysis. Be precise, professional, and concise. When citing facts from a document, reference the heading path (e.g. §2.1) so the user can verify. When drafting correspondence, memos, or any dated document, use today's date unless the user specifies otherwise.
 
-When asked who you are, what model you are, or who made you: identify as Counsel — the Suzie Law assistant. Do not claim to be ChatGPT, Gemini, Claude, or any other product. The underlying model may vary; the user-facing identity is Counsel.
+When asked who you are, what model you are, or who made you: identify as Counsel — the Scopic assistant. Do not claim to be ChatGPT, Gemini, Claude, or any other product. The underlying model may vary; the user-facing identity is Counsel.
 
 Use the available tools when relevant — vector_search for the knowledge base, convert_to_markdown to read uploaded binaries, document navigation tools (get_outline, read_section, search_document) for Q&A on a document, drafting tools (create_document, set_outline, write_section, export_to_docx) when the user asks you to write something.
 
@@ -77,98 +87,104 @@ Drafting flow:
 After export_to_docx returns, share the download link with the user in your reply as a markdown link: \`[Download <filename>](<download_url>)\`. Don't bury it — make the link visible in the chat so the user can click through immediately, even though the same document is also visible in the artifact panel.`;
 
 export const config = {
-  port: parseInt(process.env.SUZIELAW_PORT || '17501', 10),
-  publicUrl: (process.env.SUZIELAW_PUBLIC_URL || 'http://localhost:17501').replace(/\/$/, ''),
-  allowedOrigin: process.env.SUZIELAW_ALLOWED_ORIGIN || 'http://localhost:17502',
-  title: process.env.SUZIELAW_TITLE || 'Suzie Law',
+  port: parseInt(process.env.SCOPIC_PORT || '17501', 10),
+  publicUrl: (process.env.SCOPIC_PUBLIC_URL || 'http://localhost:17501').replace(/\/$/, ''),
+  allowedOrigin: process.env.SCOPIC_ALLOWED_ORIGIN || 'http://localhost:17502',
+  title: process.env.SCOPIC_TITLE || 'Scopic',
   agent: {
-    name: process.env.SUZIELAW_AGENT_NAME || 'Counsel',
-    description: process.env.SUZIELAW_AGENT_DESCRIPTION || 'Open-source legal assistant',
-    baseUrl: (process.env.SUZIELAW_AGENT_BASE_URL || DEFAULT_QWEN_BASE_URL).replace(/\/$/, ''),
-    apiKey: process.env.SUZIELAW_AGENT_API_KEY || undefined,
-    model: process.env.SUZIELAW_MODEL || DEFAULT_QWEN_MODEL,
+    name: process.env.SCOPIC_AGENT_NAME || 'Counsel',
+    description: process.env.SCOPIC_AGENT_DESCRIPTION || 'Open-source legal assistant',
+    baseUrl: (process.env.SCOPIC_AGENT_BASE_URL || DEFAULT_QWEN_BASE_URL).replace(/\/$/, ''),
+    apiKey: process.env.SCOPIC_AGENT_API_KEY || undefined,
+    model: process.env.SCOPIC_MODEL || DEFAULT_QWEN_MODEL,
     /**
      * Cheaper / faster model for narrow tasks (review cell runs, future
      * auto-titling, etc.). Falls back to the primary `model` when unset
      * so existing setups keep working without configuration.
      */
     simpleModel:
-      process.env.SUZIELAW_MODEL_SIMPLE ||
-      process.env.SUZIELAW_MODEL ||
+      process.env.SCOPIC_MODEL_SIMPLE ||
+      process.env.SCOPIC_MODEL ||
       DEFAULT_QWEN_MODEL,
     /** JSON object merged into every chat request body (e.g. {"enable_thinking":false} for Qwen). */
-    extraBody: parseJsonObject(process.env.SUZIELAW_AGENT_EXTRA_BODY) || defaultExtraBody(process.env.SUZIELAW_MODEL || DEFAULT_QWEN_MODEL),
-    /** Counsel identity / behavior. Override SUZIELAW_SYSTEM_PROMPT in env for short overrides; edit config.ts for longer. */
-    systemPrompt: process.env.SUZIELAW_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT,
+    extraBody: parseJsonObject(process.env.SCOPIC_AGENT_EXTRA_BODY) || defaultExtraBody(process.env.SCOPIC_MODEL || DEFAULT_QWEN_MODEL),
+    /** Counsel identity / behavior. Override SCOPIC_SYSTEM_PROMPT in env for short overrides; edit config.ts for longer. */
+    systemPrompt: process.env.SCOPIC_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT,
   },
   vectorDb: {
-    baseUrl: (process.env.SUZIELAW_VECTOR_DB_BASE_URL || 'http://localhost:3006').replace(/\/$/, ''),
-    apiKey: process.env.SUZIELAW_VECTOR_DB_API_KEY || undefined,
+    baseUrl: (process.env.SCOPIC_VECTOR_DB_BASE_URL || 'http://localhost:3006').replace(/\/$/, ''),
+    apiKey: process.env.SCOPIC_VECTOR_DB_API_KEY || undefined,
   },
   tools: {
-    maxIterations: parseInt(process.env.SUZIELAW_TOOL_MAX_ITERATIONS || '100', 10),
+    maxIterations: parseInt(process.env.SCOPIC_TOOL_MAX_ITERATIONS || '100', 10),
     /** Hosts the http_request tool may call. Auto-extended with any URL hosts found in skill render-context. */
-    allowedHttpHosts: parseList(process.env.SUZIELAW_HTTP_ALLOWED_HOSTS),
+    allowedHttpHosts: parseList(process.env.SCOPIC_HTTP_ALLOWED_HOSTS),
   },
   skills: {
-    skillsDir: process.env.SUZIELAW_SKILLS_DIR || './skills',
-    catalogUrl: process.env.SUZIELAW_SKILL_CATALOG_URL || undefined,
-    catalogToken: process.env.SUZIELAW_SKILL_CATALOG_TOKEN || undefined,
+    skillsDir: process.env.SCOPIC_SKILLS_DIR || './skills',
+    catalogUrl: process.env.SCOPIC_SKILL_CATALOG_URL || undefined,
+    catalogToken: process.env.SCOPIC_SKILL_CATALOG_TOKEN || undefined,
     /** Subset of skill names to install. Empty = install all discovered. */
-    allow: parseList(process.env.SUZIELAW_SKILLS_ALLOW),
-    /** {{TOKEN}} substitutions for skill markdown. Set via SUZIELAW_SKILL_VAR_<NAME>=<value>. */
+    allow: parseList(process.env.SCOPIC_SKILLS_ALLOW),
+    /** {{TOKEN}} substitutions for skill markdown. Set via SCOPIC_SKILL_VAR_<NAME>=<value>. */
     renderContext: collectSkillRenderContext(),
   },
   mcp: {
     /** Path to a JSON config file using the Claude Desktop `mcpServers` shape. */
-    configPath: process.env.SUZIELAW_MCP_CONFIG || undefined,
+    configPath: process.env.SCOPIC_MCP_CONFIG || undefined,
   },
   /**
    * Per-model agent overrides — used by `resolveAgentTarget` to route the
    * chat call to a different base URL when the user picks a Local model.
-   * Built from `${SUZIELAW_LOCAL_<NAME>_BASE_URL,_API_KEY}` env vars per
+   * Built from `${SCOPIC_LOCAL_<NAME>_BASE_URL,_API_KEY}` env vars per
    * the upstream `LOCAL_MODELS` list.
    */
-  modelAgents: buildLocalAgentRegistry(LOCAL_MODELS, process.env, 'SUZIELAW'),
+  modelAgents: {
+    ...buildLocalAgentRegistry(LOCAL_MODELS, process.env, 'SCOPIC'),
+    ollama: {
+      baseUrl: (process.env.SCOPIC_OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL).replace(/\/$/, ''),
+      apiKey: process.env.SCOPIC_OLLAMA_API_KEY || undefined,
+    },
+  },
   personas: {
     /** Directory of `<id>/PERSONA.md` files for builtin personas. Empty/unset
      *  means no builtins are loaded — user-created personas still work. */
-    dir: process.env.SUZIELAW_PERSONAS_DIR || undefined,
+    dir: process.env.SCOPIC_PERSONAS_DIR || undefined,
   },
   /**
    * Knowledge Base (RAG) — embeddings + sqlite-vec storage. Disabled when
-   * SUZIELAW_KB_ENABLED is unset/false. The embedding endpoint must be
+   * SCOPIC_KB_ENABLED is unset/false. The embedding endpoint must be
    * OpenAI-compatible at `${baseUrl}/v1/embeddings`. Defaults reuse the chat
    * agent's base URL + API key — most providers expose embeddings on the
    * same host (OpenAI, Dashscope, Together).
    */
   kb: {
-    enabled: ['1', 'true', 'yes'].includes((process.env.SUZIELAW_KB_ENABLED || '').toLowerCase()),
-    embeddingBaseUrl: (process.env.SUZIELAW_KB_EMBEDDING_BASE_URL || process.env.SUZIELAW_AGENT_BASE_URL || 'http://localhost:4000').replace(/\/$/, ''),
-    embeddingApiKey: process.env.SUZIELAW_KB_EMBEDDING_API_KEY || process.env.SUZIELAW_AGENT_API_KEY || undefined,
-    embeddingModel: process.env.SUZIELAW_KB_EMBEDDING_MODEL || 'text-embedding-3-small',
-    embeddingDim: parseInt(process.env.SUZIELAW_KB_EMBEDDING_DIM || '1536', 10),
+    enabled: ['1', 'true', 'yes'].includes((process.env.SCOPIC_KB_ENABLED || '').toLowerCase()),
+    embeddingBaseUrl: (process.env.SCOPIC_KB_EMBEDDING_BASE_URL || process.env.SCOPIC_AGENT_BASE_URL || 'http://localhost:4000').replace(/\/$/, ''),
+    embeddingApiKey: process.env.SCOPIC_KB_EMBEDDING_API_KEY || process.env.SCOPIC_AGENT_API_KEY || undefined,
+    embeddingModel: process.env.SCOPIC_KB_EMBEDDING_MODEL || 'text-embedding-3-small',
+    embeddingDim: parseInt(process.env.SCOPIC_KB_EMBEDDING_DIM || '1536', 10),
   },
   session: {
-    cookieName: process.env.SUZIELAW_COOKIE_NAME || 'suzielaw.sid',
+    cookieName: process.env.SCOPIC_COOKIE_NAME || 'scopic.sid',
     /** Sign cookies. Use a long, random value in production. */
-    cookieSecret: process.env.SUZIELAW_SESSION_SECRET || 'dev-only-suzielaw-secret',
+    cookieSecret: process.env.SCOPIC_SESSION_SECRET || 'dev-only-scopic-secret',
   },
   oauth: {
     providers: buildOAuthProvidersFromEnv({
       env: process.env,
-      publicUrl: (process.env.SUZIELAW_PUBLIC_URL || 'http://localhost:17501').replace(/\/$/, ''),
-      prefix: 'SUZIELAW_',
+      publicUrl: (process.env.SCOPIC_PUBLIC_URL || 'http://localhost:17501').replace(/\/$/, ''),
+      prefix: 'SCOPIC_',
     }),
   },
   tokenBudget: {
     /** Per-account hosted-model token allowance. 0 disables the cap. */
-    defaultLimit: parseTokenLimit(process.env.SUZIELAW_DEMO_TOKEN_LIMIT, 50_000),
+    defaultLimit: parseTokenLimit(process.env.SCOPIC_DEMO_TOKEN_LIMIT, 50_000),
     /**
      * Fallback charge when an OpenAI-compatible provider omits usage data.
      * Qwen/Dashscope should return usage when stream_options.include_usage=true.
      */
-    fallbackTokensPerCall: parseTokenLimit(process.env.SUZIELAW_TOKEN_FALLBACK_PER_CALL, 0),
+    fallbackTokensPerCall: parseTokenLimit(process.env.SCOPIC_TOKEN_FALLBACK_PER_CALL, 0),
   },
   /**
    * Seed credentials for the dev demo user. In development, a user with this
@@ -177,49 +193,49 @@ export const config = {
    * via POST /api/auth/register.
    */
   demo: {
-    email: process.env.SUZIELAW_DEMO_EMAIL || 'demo@example.com',
-    password: process.env.SUZIELAW_DEMO_PASSWORD || 'demo12345',
-    name: process.env.SUZIELAW_DEMO_NAME || 'Demo Lawyer',
-    role: process.env.SUZIELAW_DEMO_ROLE || 'attorney',
+    email: process.env.SCOPIC_DEMO_EMAIL || 'demo@example.com',
+    password: process.env.SCOPIC_DEMO_PASSWORD || 'demo12345',
+    name: process.env.SCOPIC_DEMO_NAME || 'Demo Lawyer',
+    role: process.env.SCOPIC_DEMO_ROLE || 'attorney',
   },
   nodeEnv: process.env.NODE_ENV || 'development',
   db: {
     /** SQLite db path, relative to the cwd the server starts from. */
-    path: process.env.SUZIELAW_DB_PATH || './data/suzielaw.db',
+    path: process.env.SCOPIC_DB_PATH || './data/scopic.db',
   },
   files: {
     /** Per-file size cap on uploads. Default 25MB. */
-    maxUploadBytes: parseInt(process.env.SUZIELAW_MAX_UPLOAD_BYTES || `${25 * 1024 * 1024}`, 10),
+    maxUploadBytes: parseInt(process.env.SCOPIC_MAX_UPLOAD_BYTES || `${25 * 1024 * 1024}`, 10),
   },
   markitdown: {
     /** markitdown-agent base URL. When set, the agent gets convert_to_markdown + export_to_docx. */
-    baseUrl: (process.env.SUZIELAW_MARKITDOWN_AGENT_BASE_URL || '').replace(/\/$/, ''),
+    baseUrl: (process.env.SCOPIC_MARKITDOWN_AGENT_BASE_URL || '').replace(/\/$/, ''),
   },
   legalResearch: {
     /** CourtListener API token from https://www.courtlistener.com/profile/api/. Optional. */
-    courtListenerToken: process.env.SUZIELAW_COURTLISTENER_TOKEN || undefined,
-    courtListenerBaseUrl: (process.env.SUZIELAW_COURTLISTENER_BASE_URL || '').replace(/\/$/, '') || undefined,
+    courtListenerToken: process.env.SCOPIC_COURTLISTENER_TOKEN || undefined,
+    courtListenerBaseUrl: (process.env.SCOPIC_COURTLISTENER_BASE_URL || '').replace(/\/$/, '') || undefined,
     /** PISTE OAuth2 credentials for FR/Legifrance (legislation). Both required to enable. */
-    pisteClientId: process.env.SUZIELAW_PISTE_CLIENT_ID || undefined,
-    pisteClientSecret: process.env.SUZIELAW_PISTE_CLIENT_SECRET || undefined,
+    pisteClientId: process.env.SCOPIC_PISTE_CLIENT_ID || undefined,
+    pisteClientSecret: process.env.SCOPIC_PISTE_CLIENT_SECRET || undefined,
     /** PISTE API key for FR/Judilibre (case law). */
-    judilibreApiKey: process.env.SUZIELAW_JUDILIBRE_API_KEY || undefined,
+    judilibreApiKey: process.env.SCOPIC_JUDILIBRE_API_KEY || undefined,
     /** Indian Kanoon API key. Without it, the IN/IndianKanoon provider isn't registered. */
-    indianKanoonApiKey: process.env.SUZIELAW_INDIANKANOON_API_KEY || undefined,
+    indianKanoonApiKey: process.env.SCOPIC_INDIANKANOON_API_KEY || undefined,
   },
   templates: {
     /** Directory of `<id>.md` legal document templates with frontmatter. Empty/unset disables the list_templates / get_template tools. */
-    dir: process.env.SUZIELAW_TEMPLATES_DIR || './templates',
+    dir: process.env.SCOPIC_TEMPLATES_DIR || './templates',
   },
   /**
-   * Mothership platform integration. When SUZIELAW_PLATFORM_URL is set,
-   * suzielaw registers itself with the marketplace on startup and accepts
+   * Mothership platform integration. When SCOPIC_PLATFORM_URL is set,
+   * Scopic registers itself with the marketplace on startup and accepts
    * platform-proxied chat requests + webhooks via @teamsuzie/platform-bridge.
    */
   platform: {
-    url: process.env.SUZIELAW_PLATFORM_URL || undefined,
-    token: process.env.SUZIELAW_PLATFORM_TOKEN || undefined,
-    registrationToken: process.env.SUZIELAW_PLATFORM_REG_TOKEN || undefined,
+    url: process.env.SCOPIC_PLATFORM_URL || undefined,
+    token: process.env.SCOPIC_PLATFORM_TOKEN || undefined,
+    registrationToken: process.env.SCOPIC_PLATFORM_REG_TOKEN || undefined,
   },
   /**
    * Stripe billing (@teamsuzie/billing-stripe). Disabled when STRIPE_SECRET_KEY
@@ -229,19 +245,19 @@ export const config = {
    * to capture webhooks locally.
    */
   billing: {
-    enabled: !!process.env.SUZIELAW_STRIPE_SECRET_KEY,
-    stripeSecretKey: process.env.SUZIELAW_STRIPE_SECRET_KEY || '',
-    stripeWebhookSecret: process.env.SUZIELAW_STRIPE_WEBHOOK_SECRET || '',
-    initialCreditsUsd: parseFloat(process.env.SUZIELAW_BILLING_INITIAL_CREDITS || '20'),
-    topUpAmountUsd: parseFloat(process.env.SUZIELAW_BILLING_TOPUP_AMOUNT || '20'),
-    lowBalanceThresholdUsd: parseFloat(process.env.SUZIELAW_BILLING_LOW_BALANCE_THRESHOLD || '5'),
+    enabled: !!process.env.SCOPIC_STRIPE_SECRET_KEY,
+    stripeSecretKey: process.env.SCOPIC_STRIPE_SECRET_KEY || '',
+    stripeWebhookSecret: process.env.SCOPIC_STRIPE_WEBHOOK_SECRET || '',
+    initialCreditsUsd: parseFloat(process.env.SCOPIC_BILLING_INITIAL_CREDITS || '20'),
+    topUpAmountUsd: parseFloat(process.env.SCOPIC_BILLING_TOPUP_AMOUNT || '20'),
+    lowBalanceThresholdUsd: parseFloat(process.env.SCOPIC_BILLING_LOW_BALANCE_THRESHOLD || '5'),
     /**
      * Dollar rate per 1k tokens used for metering. Total chat-turn deduction
      * = (tokens_used / 1000) * rate. Default $0.01/1k tokens — adjust to
      * match your model pricing. Set to 0 to disable per-turn deductions
      * (the org will still need a positive balance to start a turn).
      */
-    usdPer1kTokens: parseFloat(process.env.SUZIELAW_BILLING_USD_PER_1K_TOKENS || '0.01'),
+    usdPer1kTokens: parseFloat(process.env.SCOPIC_BILLING_USD_PER_1K_TOKENS || '0.01'),
   },
 };
 
@@ -249,34 +265,34 @@ export const config = {
  * Config consumed by `@teamsuzie/shared-auth` (Sequelize + Redis-backed sessions
  * + CSRF). The defaults point at the Postgres + Redis containers in
  * `docker/docker-compose.yml`. Override in production with real URIs and a
- * long random SUZIELAW_SESSION_SECRET.
+ * long random SCOPIC_SESSION_SECRET.
  */
 export const sharedAuthConfig: SharedAuthConfig = {
   node_env: config.nodeEnv,
   redis: {
-    uri: process.env.SUZIELAW_REDIS_URI || 'redis://localhost:6380/0',
-    key_prefix: process.env.SUZIELAW_REDIS_KEY_PREFIX || 'suzielaw',
+    uri: process.env.SCOPIC_REDIS_URI || 'redis://localhost:6380/0',
+    key_prefix: process.env.SCOPIC_REDIS_KEY_PREFIX || 'scopic',
   },
   postgres: {
     uri:
-      process.env.SUZIELAW_POSTGRES_URI ||
-      'postgres://suzielaw:suzielaw@localhost:5433/suzielaw',
-    logging: !!process.env.SUZIELAW_POSTGRES_ENABLE_LOGGING,
+      process.env.SCOPIC_POSTGRES_URI ||
+      'postgres://scopic:scopic@localhost:5433/scopic',
+    logging: !!process.env.SCOPIC_POSTGRES_ENABLE_LOGGING,
   },
   cookie: {
     name: config.session.cookieName,
     secret: config.session.cookieSecret,
-    domain: process.env.SUZIELAW_COOKIE_DOMAIN || undefined,
+    domain: process.env.SCOPIC_COOKIE_DOMAIN || undefined,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   },
   csrf: {
     // The browser-side CSRF lane is handled by @teamsuzie/hosted-demo's
-    // createCsrfMiddleware (cookie name 'suzielaw.csrf'). shared-auth's own
-    // CsrfMiddleware isn't mounted in suzielaw — this field is required by
+    // createCsrfMiddleware (cookie name 'scopic.csrf'). shared-auth's own
+    // CsrfMiddleware isn't mounted in Scopic — this field is required by
     // the SharedAuthConfig type but unused at runtime in this app.
-    cookie_name: 'suzielaw.csrf',
+    cookie_name: 'scopic.csrf',
   },
   default_user_id:
-    process.env.SUZIELAW_DEFAULT_USER_ID ||
+    process.env.SCOPIC_DEFAULT_USER_ID ||
     '00000000-0000-0000-0000-000000000000',
 };

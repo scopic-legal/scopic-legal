@@ -146,7 +146,7 @@ function parseLexmlSearch(html: string): SearchHit[] {
 async function fetchPlanalto(url: string): Promise<string> {
   return fetchText(url, {
     decoder: 'iso-8859-1',
-    headers: { 'User-Agent': 'suzielaw-legal-research/1.0', Accept: 'text/html' },
+    headers: { 'User-Agent': 'scopic-legal-research/1.0', Accept: 'text/html' },
     signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
   });
 }
@@ -168,7 +168,7 @@ export const brPlanalto: LegalProvider = {
     // string manually since the second field has a hyphen.
     const q = `keyword=${encodeURIComponent(opts.query)}&f1-tipoDocumento=Legisla%C3%A7%C3%A3o`;
     const html = await fetchText(`${LEXML_SEARCH}?${q}`, {
-      headers: { 'User-Agent': 'suzielaw-legal-research/1.0' },
+      headers: { 'User-Agent': 'scopic-legal-research/1.0' },
     });
     const hits = parseLexmlSearch(html);
     return {

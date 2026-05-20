@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AppShell,
   AppShellMain,
@@ -26,7 +26,6 @@ import { AssistantPage } from './pages/assistant.js';
 import { HistoryPage } from './pages/history.js';
 import { KnowledgeBasePage } from './pages/knowledge-base.js';
 import { LibraryPage } from './pages/library.js';
-import { LoginPage } from './pages/login.js';
 import { BillingPage } from './pages/billing.js';
 import { BillingReturnPage } from './pages/billing-return.js';
 import { MattersPage } from './pages/matters.js';
@@ -171,12 +170,13 @@ export default function App() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthLoaded, setHealthLoaded] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const session = useSession();
   const billing = useBilling();
   const navigate = useNavigate();
   const { personas, loading: personasLoading } = usePersonas();
   const personaList = Array.isArray(personas) ? personas : [];
-  const [selectedPersonaId, setSelectedPersonaId] = useSelectedPersona('suzielaw:selected-persona');
+  const [selectedPersonaId, setSelectedPersonaId] = useSelectedPersona('scopic:selected-persona');
   const selectedPersona = useMemo(
     () => personaList.find((p) => p.id === selectedPersonaId) ?? null,
     [personaList, selectedPersonaId],
@@ -233,7 +233,7 @@ export default function App() {
     };
   }, []);
 
-  const title = health?.title || 'Suzie Law';
+  const title = health?.title || 'Scopic';
   const agentName = health?.agent?.name || 'Counsel';
   const agentReachable = health?.agent?.reachable ?? false;
   const statusState: 'online' | 'offline' | 'pending' = !healthLoaded
@@ -246,9 +246,7 @@ export default function App() {
     <Routes>
       <Route
         path="/login"
-        element={
-          <LoginPage />
-        }
+        element={<Navigate to="/" replace />}
       />
       {/* Stripe Checkout returns here. Outside <Protected> because Stripe's
           redirect is the only thing on the page — the session cookie is
@@ -263,7 +261,7 @@ export default function App() {
               {/* Bauhaus sidebar shell — ink-black block, ivory type, saffron
                   active marker. The upstream Sidebar primitive accepts a
                   className override so we don't have to fork it. */}
-              <Sidebar className="w-64 border-r-0 bg-foreground text-background">
+              <Sidebar className="scopic-sidebar w-64 border-r-0 bg-foreground text-background">
                 <SidebarHeader className="h-auto px-5 pb-6 pt-6">
                   <Wordmark title={title} />
                 </SidebarHeader>
@@ -323,7 +321,15 @@ export default function App() {
                       'aria-[current=page]:bg-transparent aria-[current=page]:text-background aria-[current=page]:shadow-none',
                     )}
                   >
-                    <NavLink to="/settings">Settings</NavLink>
+                    <NavLink to="/settings" className="flex items-center gap-2">
+                      Settings
+                      {statusState === 'offline' && healthLoaded && (
+                        <span
+                          aria-label="Setup required"
+                          className="inline-block size-1.5 rounded-full bg-destructive"
+                        />
+                      )}
+                    </NavLink>
                   </SidebarNavItem>
 
                   {/* Billing pill — hidden when the server hasn't returned a
@@ -382,6 +388,30 @@ export default function App() {
                 </SidebarFooter>
               </Sidebar>
               <AppShellMain>
+                {statusState === 'offline' && healthLoaded && !bannerDismissed && (
+                  <div className="flex items-center justify-between gap-4 border-b border-destructive/30 bg-destructive/5 px-6 py-2.5">
+                    <p className="font-mono text-[11px] uppercase tracking-[0.10em] text-destructive">
+                      Counsel is not connected — add your API key in Settings to get started.
+                    </p>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/settings')}
+                        className="font-mono text-[11px] font-semibold uppercase tracking-[0.10em] text-destructive underline underline-offset-2 hover:text-destructive/70"
+                      >
+                        Go to Settings →
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Dismiss"
+                        onClick={() => setBannerDismissed(true)}
+                        className="font-mono text-[11px] text-destructive/50 hover:text-destructive"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <Routes>
                   <Route
                     path="/"

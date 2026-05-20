@@ -1,10 +1,10 @@
 import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
 import { KnowledgeBaseStore, createOpenAIEmbedder } from '@teamsuzie/kb';
-import { convertToMarkdown } from '@teamsuzie/document-conversion';
 import { db } from './db.js';
 import { config } from './config.js';
 import { getSessionUser } from './auth.js';
+import { convertToMarkdown } from './document-conversion.js';
 
 /**
  * Boot a KnowledgeBaseStore using the app's existing SQLite db + the
@@ -41,8 +41,7 @@ interface IngestOptions {
 /**
  * Convert a binary upload to markdown using whichever path fits the mime
  * type, then insert into the KB. Text-like uploads pass through as-is;
- * everything else routes via `@teamsuzie/document-conversion` (DOCX uses
- * mammoth in-process, anything else goes to markitdown-agent).
+ * DOCX uses mammoth in-process; everything else goes to markitdown-agent.
  */
 async function ingestFile(opts: IngestOptions, file: Express.Multer.File, ownerId?: string): Promise<{ id: string; chunkCount: number }> {
   let markdown: string;
@@ -54,7 +53,7 @@ async function ingestFile(opts: IngestOptions, file: Express.Multer.File, ownerI
       file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.originalname.toLowerCase().endsWith('.docx');
     if (!opts.markitdownBaseUrl && !isDocx) {
-      throw new Error(`Unsupported file type: ${file.mimetype}. Configure SUZIELAW_MARKITDOWN_AGENT_BASE_URL to ingest non-DOCX binaries.`);
+      throw new Error(`Unsupported file type: ${file.mimetype}. Configure SCOPIC_MARKITDOWN_AGENT_BASE_URL to ingest non-DOCX binaries.`);
     }
     const result = await convertToMarkdown(file.buffer, {
       mime: file.mimetype,

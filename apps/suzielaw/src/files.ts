@@ -1,7 +1,7 @@
 import { citationProtocolFragment } from '@teamsuzie/citations';
 import type { WorkspacesStore } from '@teamsuzie/workspaces';
-import type { WorkspaceRag } from '@teamsuzie/kb';
 import { Router, json as expressJson, type Request, type Response } from 'express';
+import type { WorkspaceRag } from './rag.js';
 import multer from 'multer';
 import {
   existsSync,

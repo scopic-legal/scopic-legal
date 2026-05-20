@@ -1,6 +1,6 @@
-name: suzielaw
+name: scopic
 
-# Auth/billing infra for suzielaw. Postgres holds users/orgs (@teamsuzie/shared-auth)
+# Auth/billing infra for Scopic. Postgres holds users/orgs (@teamsuzie/shared-auth)
 # and (later, separate PR) billing rows; Redis holds sessions + cached balances.
 #
 # Boot with:    docker compose -f docker/docker-compose.yml up -d
@@ -14,15 +14,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: suzielaw
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suzielaw}
-      POSTGRES_DB: suzielaw
+      POSTGRES_USER: scopic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scopic}
+      POSTGRES_DB: scopic
     ports:
-      - "${SUZIELAW_POSTGRES_PORT:-5433}:5432"
+      - "${SCOPIC_POSTGRES_PORT:-5433}:5432"
     volumes:
-      - suzielaw-postgres-data:/var/lib/postgresql/data
+      - scopic-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U suzielaw"]
+      test: ["CMD-SHELL", "pg_isready -U scopic"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -30,9 +30,9 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${SUZIELAW_REDIS_PORT:-6380}:6379"
+      - "${SCOPIC_REDIS_PORT:-6380}:6379"
     volumes:
-      - suzielaw-redis-data:/data
+      - scopic-redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -40,5 +40,5 @@ services:
       retries: 10
 
 volumes:
-  suzielaw-postgres-data:
-  suzielaw-redis-data:
+  scopic-postgres-data:
+  scopic-redis-data:

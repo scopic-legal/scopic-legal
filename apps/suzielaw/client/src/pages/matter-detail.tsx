@@ -67,7 +67,7 @@ import { useMatterChats } from '../hooks/use-matter-chats.js';
 import { useWorkflows } from '../hooks/use-workflows.js';
 
 const ROOT = '__root__';
-const DRAG_MIME = 'application/teamsuzie-matter+json';
+const DRAG_MIME = 'application/scopic-matter+json';
 
 interface DragPayload {
   kind: 'doc' | 'folder';

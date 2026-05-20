@@ -36,13 +36,13 @@ export function createSessionMiddleware(sessionService: SessionService): Request
 }
 
 /**
- * Dev-only bypass: when SUZIELAW_AUTH_BYPASS=true, requireAuth and
+ * Dev-only bypass: when SCOPIC_AUTH_BYPASS=true, requireAuth and
  * getSessionUser pretend the demo user is always logged in. Useful when you
  * want to browse the app without a session cookie (e.g. taking screenshots).
  * MUST NOT be enabled in production — leaks the demo identity to any caller.
  */
 function bypassUser(): SessionUser | null {
-  if (process.env.SUZIELAW_AUTH_BYPASS !== 'true') return null;
+  if (process.env.SCOPIC_AUTH_BYPASS !== 'true') return null;
   return {
     email: config.demo.email,
     name: config.demo.name,
@@ -107,7 +107,7 @@ let tokenBudget: TokenBudgetStore | undefined;
 
 /**
  * Mounts shared-auth's auth routes (POST /auth/login, /auth/logout,
- * /auth/register, GET /auth/me, /auth/introspect, …) plus the suzielaw-specific
+ * /auth/register, GET /auth/me, /auth/introspect, …) plus the Scopic-specific
  * GET /session route that the React client reads. Mount under `/api`:
  *
  *   app.use('/api', createAuthRouter({ budget: tokenBudget }));

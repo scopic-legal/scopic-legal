@@ -5,9 +5,9 @@ import {
   documentNavigationTools,
   isDocxMimeType,
 } from '@teamsuzie/markdown-document';
-import { convertToMarkdown } from '@teamsuzie/document-conversion';
 import type { AnyToolDefinition } from '@teamsuzie/agent-loop';
 import type { InMemoryFileStore, FileRecord } from './files.js';
+import { convertToMarkdown } from './document-conversion.js';
 
 /**
  * Convert a session-stored binary file (DOCX directly via mammoth, anything
@@ -15,10 +15,9 @@ import type { InMemoryFileStore, FileRecord } from './files.js';
  * convert_to_markdown tool so other features (e.g. tabular review cell
  * runs) can use the same path without going through the agent loop.
  *
- * Thin wrapper over `@teamsuzie/document-conversion`'s `convertToMarkdown`
- * facade. Preserves the prior "standalone DOCX still works without
- * markitdown-agent" behaviour by short-circuiting non-DOCX binaries with
- * a friendly error when no agent URL is configured.
+ * Preserves the "standalone DOCX still works without markitdown-agent"
+ * behaviour by short-circuiting non-DOCX binaries with a friendly error
+ * when no agent URL is configured.
  */
 export async function convertFileToMarkdown(
   record: FileRecord,

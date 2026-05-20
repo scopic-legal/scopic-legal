@@ -5,7 +5,7 @@ editing.
 
 ## Project Shape
 
-`suzielaw` is a thin, legal-domain app built on top of [Team
+`Scopic` is a thin, legal-domain app built on top of [Team
 Suzie](https://github.com/firelex/open_teamsuzie). It is the canonical example
 of the *"build your app in a sibling repo"* pattern documented in the upstream
 README — meaning it consumes upstream packages via `link:` references rather
@@ -33,7 +33,7 @@ upstream package first, then `import` from there.
 - Auth glue specific to this app's stub auth (`Protected`, `useSession`,
   `protected.tsx`)
 - App-specific routes (`/library`, `/history`, `/settings`)
-- Branding strings (`Suzie Law`, `Counsel`)
+- Branding strings (`Scopic`, `Counsel`)
 
 **What does NOT belong here — extract upstream instead:**
 - UI components (cards, panels, dropdowns, status indicators, model pickers).
@@ -44,7 +44,7 @@ upstream package first, then `import` from there.
 - Redline / tracked-changes / version-diff UI. Use `@teamsuzie/ui`
   `TrackedChangesPanel`, `RedlinePanelContent`, `VersionDiff`,
   `RedlineRuns`, `RedlineSpan`. Local `tracked-changes-panel.tsx` and
-  `redline-panel.tsx` were deleted in the P4.5 sweep; suzielaw now
+  `redline-panel.tsx` were deleted in the P4.5 sweep; Scopic now
   just supplies `onResolve`/`onLoadRedline` callbacks pointing at its
   cookie-authed endpoints. `compare-versions.tsx` is the thin
   matter-aware wrapper around upstream `VersionDiff`.
@@ -84,7 +84,7 @@ file, ask: *should this be a `@teamsuzie/ui` export?* — usually it should.
 # Build upstream packages so the link: references resolve to compiled dist
 pnpm deps:build
 
-# Start markitdown-agent + suzielaw in one shot
+# Start markitdown-agent + Scopic in one shot
 pnpm dev:full
 
 # Chat-only (no document tools)

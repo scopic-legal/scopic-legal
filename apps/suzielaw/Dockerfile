@@ -13,8 +13,8 @@ RUN pnpm install --frozen-lockfile=false && pnpm --filter "./packages/*" build
 
 WORKDIR /repo/suzielaw
 RUN pnpm install --frozen-lockfile=false
-RUN pnpm --filter @suzielaw/assistant-client exec vite build
-RUN pnpm --filter @suzielaw/assistant build
+RUN pnpm --filter @scopic/assistant-client exec vite build
+RUN pnpm --filter @scopic/assistant build
 
 FROM node:20-bookworm-slim
 RUN corepack enable && corepack prepare pnpm@9 --activate

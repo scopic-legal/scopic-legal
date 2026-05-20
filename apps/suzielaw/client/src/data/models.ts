@@ -1,4 +1,24 @@
 import { DEFAULT_MODELS, type ModelOption } from '@teamsuzie/ui';
+import { OLLAMA_BASE_URL, OLLAMA_MODEL_ID } from './ollama.js';
+
+type ScopicModelOption = ModelOption & {
+  label?: string;
+  baseUrl?: string;
+  isLocal?: boolean;
+};
+
+export const OLLAMA_MODEL: ScopicModelOption = {
+  id: OLLAMA_MODEL_ID,
+  name: 'Ollama (Local)',
+  label: 'Ollama (Local)',
+  provider: 'ollama',
+  description: 'Use a model running locally in Ollama.',
+  local: true,
+  isLocal: true,
+  baseUrl: OLLAMA_BASE_URL,
+  resolvedBaseUrl: OLLAMA_BASE_URL,
+  installUrl: 'https://ollama.com/download',
+};
 
 /**
  * Suzielaw's model picker list. Qwen 3.6-Plus is the demo-budget default;
@@ -6,7 +26,7 @@ import { DEFAULT_MODELS, type ModelOption } from '@teamsuzie/ui';
  * provider key in Settings, otherwise rendered disabled with a "needs
  * key" hint. The chat handler enforces this server-side too.
  */
-export const MODELS: ModelOption[] = DEFAULT_MODELS;
+export const MODELS: ModelOption[] = [...DEFAULT_MODELS, OLLAMA_MODEL];
 
 /**
  * Maps a `ModelOption.id` to the cloud provider id it routes through for

@@ -1,4 +1,4 @@
-# Suzie Law — Manual Test Plan
+# Scopic — Manual Test Plan
 
 End-to-end manual test pass for every user-facing feature. Run after a clean rebuild (`pnpm dev:full`); resets data and starts fresh where noted.
 
@@ -8,9 +8,9 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 
 ## 0 — Pre-flight
 
-- [ ] `pnpm dev:full` brings up markitdown-agent (port 3013) and the suzielaw stack without errors. Tail `.dev-logs/markitdown-agent.log` if anything fails.
-- [ ] Browser tab title reads **Suzie Law**. No icon next to the wordmark in the sidebar header. Body text renders in **Inter** (Google Font). DevTools → Network shows the Google Fonts request succeeding.
-- [ ] Sidebar shows: **Assistant**, **Matters**, **Library**, **Personas**, **History**, **Admin**, **Settings** in the footer. (Knowledge Base appears only when `SUZIELAW_KB_ENABLED=true`.)
+- [ ] `pnpm dev:full` brings up markitdown-agent (port 3013) and the Scopic stack without errors. Tail `.dev-logs/markitdown-agent.log` if anything fails.
+- [ ] Browser tab title reads **Scopic**. No icon next to the wordmark in the sidebar header. Body text renders in **Inter** (Google Font). DevTools → Network shows the Google Fonts request succeeding.
+- [ ] Sidebar shows: **Assistant**, **Matters**, **Library**, **Personas**, **History**, **Admin**, **Settings** in the footer. (Knowledge Base appears only when `SCOPIC_KB_ENABLED=true`.)
 - [ ] Status dot in the sidebar footer turns green within ~2 s of load (agent reachable).
 
 ## 1 — Auth
@@ -33,7 +33,7 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 - [ ] Pick **Litigation** → the picker closes, the chosen persona's avatar shows in the sidebar footer button, and the next chat reply visibly reflects litigation-flavoured framing.
 - [ ] Click **Clear selection** in the picker → reverts to "Default Counsel".
 - [ ] **CRUD** on the Personas page: create a custom persona (name, system prompt, avatar) → it appears in the picker. Edit it → changes apply. Delete it → removed from picker.
-- [ ] Persona persists across reload (localStorage `suzielaw:selected-persona`).
+- [ ] Persona persists across reload (localStorage `scopic:selected-persona`).
 
 ## 4 — Workflows from Library
 
@@ -46,7 +46,7 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 - [ ] **Delete** a saved workflow (with confirm dialog) → removed.
 - [ ] **Share** dialog opens for a saved workflow.
 - [ ] **History** dialog for a workflow lists prior runs.
-- [ ] **Export workflows** → downloads `suzielaw-workflows-YYYY-MM-DD.csv` with header row + one row per workflow, properly quoted.
+- [ ] **Export workflows** → downloads `scopic-workflows-YYYY-MM-DD.csv` with header row + one row per workflow, properly quoted.
 - [ ] **Background jobs** tab renders without errors.
 
 ## 5 — Matters
@@ -95,9 +95,9 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 - [ ] "Look up 410 U.S. 113" → `courtlistener_lookup_citation` resolves to Roe v. Wade.
 - [ ] "Show me Justice Sotomayor's bio" → `courtlistener_search` (type=p) → `courtlistener_get_person` → biographical info renders.
 - [ ] "Find a software license agreement filed as an exhibit in the Northern District of California" → `courtlistener_find_contract_precedent` returns RECAP exhibits with `text_status` per item.
-- [ ] **Without an API token** the unauthenticated calls succeed (lower rate limit). With `SUZIELAW_COURTLISTENER_TOKEN` set, the auth-only endpoints (docket entries, RECAP documents) also work.
+- [ ] **Without an API token** the unauthenticated calls succeed (lower rate limit). With `SCOPIC_COURTLISTENER_TOKEN` set, the auth-only endpoints (docket entries, RECAP documents) also work.
 
-## 11 — Knowledge Base (only when `SUZIELAW_KB_ENABLED=true`)
+## 11 — Knowledge Base (only when `SCOPIC_KB_ENABLED=true`)
 
 - [ ] `/knowledge-base` appears in the nav. Upload a PDF / DOCX → it chunks and embeds (status visible per row).
 - [ ] In Assistant, ask a question grounded in KB content → agent calls `vector_search`, reply cites the KB doc.
@@ -117,7 +117,7 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 - [ ] Add a key for **DashScope** → Qwen 3.6-Plus row visible.
 - [ ] Add a key for **Anthropic** → Claude Sonnet 4.6 row visible.
 - [ ] Configure a **Local model** (Qwen 3.6-35B-A3B): edit the base URL → if a vLLM/llama.cpp server is up at that URL, status flips to reachable; selecting it routes chat to the local endpoint.
-- [ ] Selected model persists across reload (`suzielaw:selected-model`).
+- [ ] Selected model persists across reload (`scopic:selected-model`).
 
 ## 14 — Admin — reset all content
 
@@ -135,7 +135,7 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 
 - [ ] Reload mid-chat → in-flight messages are not lost; the chat reopens with full history.
 - [ ] Quit the dev server, restart `pnpm dev:full`, log back in → all matters, documents, chats, reviews, personas, saved workflows, BYOK keys, and selected model still present.
-- [ ] On-disk: `apps/suzielaw/data/suzielaw.db` exists with non-empty `matters`, `chats`, `reviews`, `kb_documents` tables (`sqlite3 ... ".tables"`).
+- [ ] On-disk: `apps/suzielaw/data/scopic.db` exists with non-empty `matters`, `chats`, `reviews`, `kb_documents` tables (`sqlite3 ... ".tables"`).
 
 ## 17 — Negative / regression checks
 

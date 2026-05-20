@@ -13,13 +13,27 @@ import {
   EmptyStateTitle,
   GitCompareArrows,
   PendingButton,
-  VersionDiff,
   cn,
 } from '@teamsuzie/ui';
-import type { DocumentDiffResult } from '@teamsuzie/docx-diff';
 import type { MatterDocument } from '../hooks/use-matter.js';
 
-export type { DocumentDiffResult };
+export interface DocumentDiffResult {
+  left: { name: string; paragraphs: number };
+  right: { name: string; paragraphs: number };
+  stats: {
+    unchanged: number;
+    modified: number;
+    deleted: number;
+    inserted: number;
+    moved: number;
+  };
+  events: Array<{
+    kind: 'unchanged' | 'deleted' | 'inserted' | 'modified';
+    text?: string;
+    leftText?: string;
+    rightText?: string;
+  }>;
+}
 
 interface DialogProps {
   open: boolean;
@@ -181,13 +195,8 @@ function DocColumn({
 }
 
 /**
- * Side-panel rendering of a finished diff. Delegates the rendering to
- * `<VersionDiff>` from `@teamsuzie/ui` (the shared upstream renderer);
- * suzielaw's only contribution here is building the matter-scoped
+ * Side-panel rendering of a finished diff. Builds the matter-scoped
  * `/api/matters/:id/diff/download` URL when matter + file ids are known.
- *
- * Word-level ins/del runs, paragraph-event blocks, and the stats line
- * all live upstream now.
  */
 export function DiffPanel({
   result,
@@ -204,5 +213,49 @@ export function DiffPanel({
     matterId && leftFileId && rightFileId
       ? `/api/matters/${encodeURIComponent(matterId)}/diff/download?leftFileId=${encodeURIComponent(leftFileId)}&rightFileId=${encodeURIComponent(rightFileId)}`
       : undefined;
-  return <VersionDiff result={result} downloadHref={downloadHref} />;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-foreground">
+            {result.left.name} → {result.right.name}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {result.stats.modified} modified · {result.stats.inserted} inserted ·{' '}
+            {result.stats.deleted} deleted
+          </div>
+        </div>
+        {downloadHref && (
+          <a
+            href={downloadHref}
+            className="border border-foreground/30 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.10em] hover:border-foreground"
+          >
+            Download DOCX
+          </a>
+        )}
+      </div>
+      <div className="space-y-2">
+        {result.events
+          .filter((event) => event.kind !== 'unchanged')
+          .slice(0, 80)
+          .map((event, index) => (
+            <div key={index} className="border border-border bg-card p-3 text-sm">
+              <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                {event.kind}
+              </div>
+              {event.kind === 'modified' ? (
+                <div className="space-y-2">
+                  <p className="text-destructive line-through">{event.leftText}</p>
+                  <p className="text-foreground">{event.rightText}</p>
+                </div>
+              ) : (
+                <p className={event.kind === 'deleted' ? 'text-destructive line-through' : 'text-foreground'}>
+                  {event.text}
+                </p>
+              )}
+            </div>
+          ))}
+      </div>
+    </div>
+  );
 }

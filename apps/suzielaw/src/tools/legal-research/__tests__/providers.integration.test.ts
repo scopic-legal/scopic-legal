@@ -5,8 +5,8 @@
 // because the regular test run shouldn't depend on the network or on
 // slow upstream services.
 //
-// FR providers additionally need PISTE creds (SUZIELAW_PISTE_*,
-// SUZIELAW_JUDILIBRE_API_KEY) and are skipped when those are absent.
+// FR providers additionally need PISTE creds (SCOPIC_PISTE_*,
+// SCOPIC_JUDILIBRE_API_KEY) and are skipped when those are absent.
 
 import { describe, it, expect } from 'vitest';
 import { arInfoleg } from '../providers/ar-infoleg.js';
@@ -78,9 +78,9 @@ describe.skipIf(!RUN)('AR/InfoLEG', () => {
 // -----------------------------------------------------------------------------
 // US / CourtListener
 // -----------------------------------------------------------------------------
-const HAS_COURTLISTENER_TOKEN = !!process.env.SUZIELAW_COURTLISTENER_TOKEN;
+const HAS_COURTLISTENER_TOKEN = !!process.env.SCOPIC_COURTLISTENER_TOKEN;
 describe.skipIf(!RUN)('US/CourtListener', () => {
-  const provider = buildUsCourtListener({ token: process.env.SUZIELAW_COURTLISTENER_TOKEN });
+  const provider = buildUsCourtListener({ token: process.env.SCOPIC_COURTLISTENER_TOKEN });
 
   it('searches for Miranda opinions', async () => {
     const r = await provider.search({ query: 'Miranda warning', type: 'case_law' });
@@ -137,11 +137,11 @@ describe.skipIf(!RUN)('EU/CURIA', () => {
 // -----------------------------------------------------------------------------
 // FR / Légifrance — needs PISTE creds
 // -----------------------------------------------------------------------------
-const HAS_PISTE = !!(process.env.SUZIELAW_PISTE_CLIENT_ID && process.env.SUZIELAW_PISTE_CLIENT_SECRET);
+const HAS_PISTE = !!(process.env.SCOPIC_PISTE_CLIENT_ID && process.env.SCOPIC_PISTE_CLIENT_SECRET);
 describe.skipIf(!RUN || !HAS_PISTE)('FR/Legifrance', () => {
   const provider = buildFrLegifrance({
-    clientId: process.env.SUZIELAW_PISTE_CLIENT_ID!,
-    clientSecret: process.env.SUZIELAW_PISTE_CLIENT_SECRET!,
+    clientId: process.env.SCOPIC_PISTE_CLIENT_ID!,
+    clientSecret: process.env.SCOPIC_PISTE_CLIENT_SECRET!,
   });
 
   it('searches Code civil for "domicile"', async () => {
@@ -166,9 +166,9 @@ describe.skipIf(!RUN || !HAS_PISTE)('FR/Legifrance', () => {
 // -----------------------------------------------------------------------------
 // FR / Judilibre — needs PISTE API key
 // -----------------------------------------------------------------------------
-const HAS_JUDILIBRE = !!process.env.SUZIELAW_JUDILIBRE_API_KEY;
+const HAS_JUDILIBRE = !!process.env.SCOPIC_JUDILIBRE_API_KEY;
 describe.skipIf(!RUN || !HAS_JUDILIBRE)('FR/Judilibre', () => {
-  const provider = buildFrJudilibre({ apiKey: process.env.SUZIELAW_JUDILIBRE_API_KEY! });
+  const provider = buildFrJudilibre({ apiKey: process.env.SCOPIC_JUDILIBRE_API_KEY! });
 
   it('searches Cour de cassation decisions', async () => {
     const r = await provider.search({ query: 'responsabilité', type: 'case_law' });
@@ -497,9 +497,9 @@ describe.skipIf(!RUN)('BR/Planalto', () => {
 // -----------------------------------------------------------------------------
 // IN / Indian Kanoon — needs API key
 // -----------------------------------------------------------------------------
-const HAS_INDIANKANOON = !!process.env.SUZIELAW_INDIANKANOON_API_KEY;
+const HAS_INDIANKANOON = !!process.env.SCOPIC_INDIANKANOON_API_KEY;
 describe.skipIf(!RUN || !HAS_INDIANKANOON)('IN/IndianKanoon', () => {
-  const provider = buildInIndianKanoon({ apiKey: process.env.SUZIELAW_INDIANKANOON_API_KEY! });
+  const provider = buildInIndianKanoon({ apiKey: process.env.SCOPIC_INDIANKANOON_API_KEY! });
 
   it('searches Indian Supreme Court judgments', async () => {
     const r = await provider.search({ query: 'arbitration agreement', type: 'case_law' });

@@ -34,7 +34,7 @@ const SNIPPET_PAD = 40;
  * containing heading path so the model can ground a citation in the
  * right section.
  *
- * Lives upstream-of-suzielaw in spirit (uses `@teamsuzie/docx` +
+ * Lives upstream-of-Scopic in spirit (uses `@teamsuzie/docx` +
  * `@teamsuzie/markdown-document`) but stays in the app for now —
  * promotion to a `@teamsuzie/find` package is one extraction away if
  * a second app needs it.

@@ -39,7 +39,7 @@ async function sparqlSelect(query: string): Promise<SparqlResults> {
   return fetchJson<SparqlResults>(`${SPARQL_ENDPOINT}?${params.toString()}`, {
     headers: {
       Accept: 'application/sparql-results+json',
-      'User-Agent': 'suzielaw-legal-research/1.0',
+      'User-Agent': 'scopic-legal-research/1.0',
     },
   });
 }

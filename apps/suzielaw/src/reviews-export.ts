@@ -42,7 +42,7 @@ export async function buildReviewWorkbook(
   const workspace = opts.workspaces.getWorkspace(opts.matterId);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Suzie Law';
+  workbook.creator = 'Scopic';
   workbook.created = new Date();
 
   const sheet = workbook.addWorksheet(safeSheetName(snapshot.review.name));

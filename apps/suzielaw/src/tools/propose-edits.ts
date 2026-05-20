@@ -1,5 +1,5 @@
 import type { AnyToolDefinition } from '@teamsuzie/agent-loop';
-import { proposeDocumentEdits } from '@teamsuzie/docx';
+import { applyContentKeyedEdits, loadDocx } from '@teamsuzie/docx';
 import type { DocumentVersionsStore } from '@teamsuzie/document-versions';
 import type { FileRecord, InMemoryFileStore } from '../files.js';
 
@@ -16,6 +16,57 @@ interface BuildOptions {
   documentVersions?: DocumentVersionsStore;
 }
 
+function proposeDocumentEdits(opts: {
+  docxBytes: Buffer | Uint8Array;
+  edits: Array<{
+    find: string;
+    replace: string;
+    context_before: string;
+    context_after: string;
+    reason?: string;
+  }>;
+  author: string;
+}) {
+  const file = loadDocx(opts.docxBytes);
+  const results = applyContentKeyedEdits(
+    file,
+    opts.edits.map((edit) => ({
+      find: edit.find,
+      replace: edit.replace,
+      contextBefore: edit.context_before,
+      contextAfter: edit.context_after,
+      reason: edit.reason,
+    })),
+    { name: opts.author },
+  );
+  const applied = results.filter((result) => result.status === 'applied');
+  return {
+    bytes: file.save(),
+    applied_count: applied.length,
+    total_count: results.length,
+    edits: results.map((result, index) => ({
+      index,
+      status: result.status,
+      revision_ids: result.revisionIds,
+      reason: result.reason ?? opts.edits[index]?.reason,
+    })),
+    revisions: [
+      ...new Set(applied.flatMap((result) => result.revisionIds)),
+    ].map((id) => ({ id })),
+    errors: results
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status !== 'applied')
+      .map(({ result, index }) => ({
+        index,
+        status: result.status,
+        reason: result.reason ?? 'edit was not applied',
+      })),
+    suggested_filename(name: string) {
+      return `${name.replace(/\.docx$/i, '')}-proposed-redline.docx`;
+    },
+  };
+}
+
 /**
  * Chat tool the agent invokes to redline a single uploaded DOCX with a list
  * of content-keyed edits. Each edit specifies a find string + the
@@ -23,7 +74,7 @@ interface BuildOptions {
  * is unambiguous; the pure pipeline (`proposeDocumentEdits` from
  * `@teamsuzie/docx`) applies them as native Word tracked changes, returns
  * structured per-edit metadata and the new DOCX bytes. This wrapper layers
- * suzielaw-specific concerns on top:
+ * Scopic-specific concerns on top:
  *   - file-store IO (read source bytes, write the redline)
  *   - `documentVersions` row recording so the version-diff UI can show the
  *     proposal in the history chain
@@ -172,7 +223,7 @@ export function buildProposeEditsTools(
       const downloadUrl = originUrl ? `${originUrl}${relativePath}` : relativePath;
 
       // Strip the server-only fields (`bytes`, `suggested_filename`) and
-      // attach the suzielaw-side download metadata. This matches the
+      // attach the Scopic-side download metadata. This matches the
       // client `ProposeEditsResult` shape `TrackedChangesPanel` consumes.
       const { bytes: _bytes, suggested_filename: _suggested, ...wire } = result;
       return {

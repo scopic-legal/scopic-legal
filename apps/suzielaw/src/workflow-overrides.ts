@@ -26,7 +26,7 @@ export const GENERATE_DOCX_BLOCKED_TOOLS: readonly string[] = [
   'revise_section',
   'delete_section',
   'export_to_docx',
-  // suzielaw template tools (steer toward the markdown flow)
+  // Scopic template tools (steer toward the markdown flow)
   'list_templates',
   'get_template',
 ];

@@ -15,6 +15,8 @@
  *     APIs expect bare ids (`claude-sonnet-4-6`, `gpt-5.5`). When BYOK
  *     fires for one of these, the chat handler rewrites the request
  *     body's `model` field via this map before posting.
+ *   - `extraBody` (optional): provider-specific request body extensions
+ *     accepted by that provider. Omitted means "send no non-standard fields".
  *
  * Anthropic uses Anthropic's OpenAI-compatibility endpoint
  * (`/v1/chat/completions`), so it slots in alongside OpenAI / Dashscope
@@ -30,6 +32,8 @@ export interface CloudProvider {
   modelIds: string[];
   /** Optional UI id → wire id rewrite. Defaults to identity per id. */
   wireModelIds?: Record<string, string>;
+  /** Optional provider-specific request-body extensions. */
+  extraBody?: Record<string, unknown>;
   /** Optional helper text rendered under the input in the settings dialog. */
   hint?: string;
   /** Optional URL where users find their key. */
@@ -43,7 +47,7 @@ export const CLOUD_PROVIDERS: CloudProvider[] = [
     baseUrl: 'https://api.anthropic.com',
     modelIds: ['anthropic/claude-sonnet-4-6'],
     wireModelIds: { 'anthropic/claude-sonnet-4-6': 'claude-sonnet-4-6' },
-    hint: "Used for Claude Sonnet 4.6. Routes via Anthropic's OpenAI-compat endpoint.",
+    hint: 'Powers Claude Sonnet 4.6. Sign up at Anthropic and get a key from your account dashboard.',
     keyUrl: 'https://console.anthropic.com/settings/keys',
   },
   {
@@ -52,15 +56,16 @@ export const CLOUD_PROVIDERS: CloudProvider[] = [
     baseUrl: 'https://api.openai.com',
     modelIds: ['openai/gpt-5.5'],
     wireModelIds: { 'openai/gpt-5.5': 'gpt-5.5' },
-    hint: 'Used for GPT-5.5. Billed against your OpenAI account.',
+    hint: 'Powers GPT-5.5. Add a key from your OpenAI account — usage is billed to your account.',
     keyUrl: 'https://platform.openai.com/api-keys',
   },
   {
     id: 'dashscope',
-    label: 'Alibaba (Dashscope)',
+    label: 'Alibaba Cloud (Qwen — recommended)',
     baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode',
     modelIds: ['qwen3.6-plus'],
-    hint: 'Used for Qwen 3.6-Plus. With a key the chat bypasses the demo token budget.',
+    extraBody: { enable_thinking: false },
+    hint: 'Powers the default Qwen model. Free tier available — sign up for a free key to get started immediately.',
     keyUrl: 'https://dashscope.console.aliyun.com/apiKey',
   },
 ];
@@ -82,6 +87,15 @@ export function wireModelIdFor(uiModelId: string): string {
     }
   }
   return uiModelId;
+}
+
+/**
+ * Body extensions to use when routing directly to a cloud provider. The empty
+ * object is intentional: BYOK routes must not inherit default-agent provider
+ * knobs such as Dashscope's `enable_thinking` when the target is OpenAI.
+ */
+export function extraBodyForProvider(provider: CloudProvider): Record<string, unknown> {
+  return provider.extraBody ?? {};
 }
 
 /** Convenience: provider ids only. */

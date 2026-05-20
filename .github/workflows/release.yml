@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: dist-electron/*.dmg
+          - os: windows-latest
+            artifact: dist-electron/*.exe
+          - os: ubuntu-latest
+            artifact: dist-electron/*.AppImage
+
+    steps:
+      - name: Checkout Scopic
+        uses: actions/checkout@v4
+        with:
+          path: scopic
+
+      - name: Checkout Team Suzie
+        uses: actions/checkout@v4
+        with:
+          repository: firelex/open_teamsuzie
+          path: teamsuzie_oss
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Build Team Suzie packages
+        working-directory: scopic
+        run: pnpm deps:build
+
+      - name: Install dependencies
+        working-directory: scopic
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop artifact
+        working-directory: scopic
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm dist
+
+      - name: Upload artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: scopic/${{ matrix.artifact }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,14 +1,14 @@
-# Suzie Law
+# Scopic
 
 **An open-source alternative to Harvey.** A legal-AI workspace where lawyers chat with a specialized assistant ("Counsel"), upload contracts and filings, ask questions about them, draft memos that ship as `.docx`, search a personal knowledge base of indexed documents, and switch between practice-area personas tuned for litigation, M&A, capital markets, arbitration, IP, tax, and more.
 
-Built on **[Team Suzie](https://github.com/firelex/open_teamsuzie)** — the open business operating layer for agent systems. Team Suzie provides the chat shell, agent loop, skills runtime, persona registry, knowledge-base store, document conversion service, and UI primitives. Suzie Law is a thin downstream app on top: legal-domain content, branding, and the legal-specific glue.
+Built on **[Team Suzie](https://github.com/firelex/open_teamsuzie)** — the open business operating layer for agent systems. Team Suzie provides the chat shell, agent loop, skills runtime, persona registry, knowledge-base store, document conversion service, and UI primitives. Scopic is a thin downstream app on top: legal-domain content, branding, and the legal-specific glue.
 
 This repo is also the **canonical reference example** of the *"build your app in a sibling repo"* pattern Team Suzie's README describes — meaning we consume Team Suzie packages via local `link:` references rather than vendoring or re-implementing them.
 
-![Suzie Law preview](docs/media/suzielaw-og-image.jpg)
+![Scopic preview](docs/media/scopic-og-image.jpg)
 
-**Demo video:** [docs/media/suzielaw-demo.mp4](docs/media/suzielaw-demo.mp4)
+**Demo video:** [docs/media/scopic-demo.mp4](docs/media/scopic-demo.mp4)
 
 ---
 
@@ -64,31 +64,31 @@ You'll describe what you want in English; the assistant does the wiring. Pick on
 - **Node 20** (pinned via `.nvmrc` — run `nvm use` after cloning). Switching Node versions after install requires a `better-sqlite3` rebuild — see Troubleshooting.
 - **pnpm 9+**.
 - **Python 3.10+** with `python3 -m venv` — required for the document conversion / DOCX export features.
-- **Docker** with `docker compose` — runs Postgres + Redis for `@teamsuzie/shared-auth`. `pnpm dev:full` boots both via `docker/docker-compose.yml`. (If you'd rather run them yourself, point `SUZIELAW_POSTGRES_URI` and `SUZIELAW_REDIS_URI` at your own instances.)
+- **Docker** with `docker compose` — runs Postgres + Redis for `@teamsuzie/shared-auth`. `pnpm dev:full` boots both via `docker/docker-compose.yml`. (If you'd rather run them yourself, point `SCOPIC_POSTGRES_URI` and `SCOPIC_REDIS_URI` at your own instances.)
 
-### 3. Clone Team Suzie + Suzie Law side by side
+### 3. Clone Team Suzie + Scopic side by side
 
 ```bash
 mkdir -p ~/code && cd ~/code
 git clone https://github.com/firelex/open_teamsuzie open_teamsuzie
-git clone https://github.com/firelex/suzielaw
+git clone <this repo URL> scopic
 ```
 
-The two repos must sit as siblings. Suzie Law's `package.json` reaches into `../open_teamsuzie/packages/*` via pnpm `link:` references.
+The two repos must sit as siblings. Scopic's `package.json` reaches into `../open_teamsuzie/packages/*` via pnpm `link:` references.
 
 ### 4. Configure + run
 
 ```bash
-cd ~/code/suzielaw
+cd ~/code/scopic
 nvm use               # picks up .nvmrc → Node 20
 pnpm deps:build       # build the linked Team Suzie packages once
 pnpm install
 
 cp apps/suzielaw/.env.example apps/suzielaw/.env
-# fill in SUZIELAW_AGENT_API_KEY in .env
+# fill in SCOPIC_AGENT_API_KEY in .env
 # default model is Qwen 3.6-Plus via DashScope's OpenAI-compatible endpoint;
-# swap SUZIELAW_AGENT_BASE_URL + SUZIELAW_MODEL together for another provider
-# (SUZIELAW_MARKITDOWN_AGENT_BASE_URL=http://localhost:3013 is already
+# swap SCOPIC_AGENT_BASE_URL + SCOPIC_MODEL together for another provider
+# (SCOPIC_MARKITDOWN_AGENT_BASE_URL=http://localhost:3013 is already
 #  set — leave it as-is for full features)
 
 pnpm dev:full
@@ -98,12 +98,12 @@ pnpm dev:full
 - Starts **Postgres + Redis** via `docker compose` (host ports 5433 + 6380, non-default to avoid collisions). Skipped silently if Docker isn't running — start them yourself if so.
 - Starts **markitdown-agent** (Python conversion service) in the background. Creates the Python venv on first run, installs deps, starts on port 3013. Logs go to `.dev-logs/markitdown-agent.log`.
 - Waits for the agent's `/health` to respond.
-- Starts the **suzielaw** app (Express + Vite) in the foreground. On first boot, runs the shared-auth schema sync against Postgres and seeds the demo user.
+- Starts the **Scopic** app (Express + Vite) in the foreground. On first boot, runs the shared-auth schema sync against Postgres and seeds the demo user.
 - Cleans up both on Ctrl+C.
 
 Open <http://localhost:17502> and sign in with `demo@example.com` / `demo` — that user is seeded into Postgres on first boot. New users register via the auth UI (or POST `/api/auth/register`); shared-auth handles bcrypt hashing, Redis-backed sessions, and CSRF.
 
-For browsing without auth (screenshots, demos), `SUZIELAW_AUTH_BYPASS=true` is set in `.env.example`. **Disable it before deploying anywhere shared** — it treats every request as the demo user.
+For browsing without auth (screenshots, demos), `SCOPIC_AUTH_BYPASS=true` is set in `.env.example`. **Disable it before deploying anywhere shared** — it treats every request as the demo user.
 
 **Chat-only run (no document tools)**: `pnpm dev` runs just the Node side. Faster start; the drafting / Q&A flows on documents won't work end-to-end without the Python service.
 
@@ -111,47 +111,47 @@ For browsing without auth (screenshots, demos), `SUZIELAW_AUTH_BYPASS=true` is s
 
 ## What you get
 
-Out of the box, Suzie Law has:
+Out of the box, Scopic has:
 
 - **Counsel — a legal chat assistant.** Multi-page shell built on Team Suzie's `@teamsuzie/ui` primitives: Assistant / Library / Personas / (Knowledge Base, optional) / History / Settings.
 - **Personas — 12 practice-area assistants.** Builtin file-based personas: Litigation, M&A, Capital Markets, Arbitration, Antitrust, Business of Law, Employment, IP, Privacy & Data, Real Estate, Tax, Transactional. Each has its own system prompt + tool subset + avatar. Users create their own private personas via the Personas page (CRUD scoped to their session).
 - **Library — 160+ agentic prompt recipes** spanning all 13 practice areas (paginated 24/page). Every prompt is a tool-invoking recipe — not a paste-and-pray template. Document-summarization, clause extraction, drafting → DOCX export, transcript analysis, regulatory research, and more. Click any tile to pre-fill the chat. Save your own; export the catalog to CSV.
 - **Document Q&A + drafting (DOCX).** Upload a DOCX / PDF / PPTX / XLSX / HTML / EPUB; the agent converts to markdown (DOCX via `mammoth + turndown` in-process for table fidelity, others via `markitdown-agent`) and answers with section-path citations. For drafting, Counsel proposes a TOC, fills section by section while reading neighbors for coherence, and exports a styled `.docx`. The draft renders live in a read-only artifact panel.
-- **Knowledge Base (optional, RAG).** Drop documents into the Knowledge Base page; they're chunked, embedded via your agent's `/v1/embeddings` endpoint, and stored in `sqlite-vec` on the same SQLite file. The agent calls a `kb_search` tool when relevant. Enable with `SUZIELAW_KB_ENABLED=true`.
+- **Knowledge Base (optional, RAG).** Drop documents into the Knowledge Base page; they're chunked, embedded via your agent's `/v1/embeddings` endpoint, and stored in `sqlite-vec` on the same SQLite file. The agent calls a `kb_search` tool when relevant. Enable with `SCOPIC_KB_ENABLED=true`.
 - **Legal research across 19 jurisdictions.** A unified surface — three model-facing tools (`legal_search`, `legal_get_document`, `legal_find_in_document`) — that dispatches across 22 official providers covering most major economies: US (CourtListener case law + eCFR), UK, EU (EUR-Lex + CURIA), FR (Légifrance + Judilibre), DE (gesetze-im-internet + OpenLegalData), ES/BOE, IT/Normattiva, AT/RIS, CH/Fedlex, Council of Europe/HUDOC, BR (Planalto + LexML), IN/Indian Kanoon, AU/Federal Register, NL (Wetten + Rechtspraak), IE, CA, BE/Justel, JP/e-Gov, MX/DOF, AR/InfoLEG. The agent picks the right backend by jurisdiction or `source_id`, returns partial results with per-source errors, and links every cited authority to its official primary-source URL — no fabricated holdings. Most providers work anonymously; auth-gated ones (Légifrance PISTE, Judilibre, Indian Kanoon, CourtListener with token) register only when their env vars are set.
 - **Settings → model picker** with five options: three cloud (Claude Sonnet 4.6, GPT-5.5, Qwen 3.6-Plus) plus two locally-hosted (Qwen 3.6-35B-A3B and Gemma 4-26B-A4B-it via unsloth). Per-model routing — picking a Local model swaps the chat call to its own endpoint. Choice persists in localStorage and applies on the next message.
 - **Local SQLite** for personas, user prompts, and the knowledge base — all in one file via `@teamsuzie/db-sqlite`. No external DB required for app content.
 - **Multi-tenant auth.** Email/password + Google/Microsoft OAuth, Postgres-backed users + orgs, Redis-backed sessions, CSRF on every mutation — provided by `@teamsuzie/shared-auth`. Sessions, users, and orgs land in Postgres; everything else (personas, KB, matters, chats) stays in SQLite where it always was.
-- **Stripe credit-balance billing (optional).** When `SUZIELAW_STRIPE_SECRET_KEY` is set, `@teamsuzie/billing-stripe` gates `/api/chat` on the org having a positive credit balance — depleted users see an in-app paywall, click through to Stripe Checkout, and come back with credits. Per-chat-turn token usage is debited at a configurable USD-per-1k-token rate. Webhooks are idempotent. Leave the env var unset to run the app without a paywall.
+- **Stripe credit-balance billing (optional).** When `SCOPIC_STRIPE_SECRET_KEY` is set, `@teamsuzie/billing-stripe` gates `/api/chat` on the org having a positive credit balance — depleted users see an in-app paywall, click through to Stripe Checkout, and come back with credits. Per-chat-turn token usage is debited at a configurable USD-per-1k-token rate. Webhooks are idempotent. Leave the env var unset to run the app without a paywall.
 
 ### Optional features (off by default)
 
 | Feature | Enable | Notes |
 |---|---|---|
-| Knowledge Base / RAG | `SUZIELAW_KB_ENABLED=true` + pick an embedding model | Defaults reuse the chat agent's base URL + key. Set `SUZIELAW_KB_EMBEDDING_MODEL` and `_DIM` per provider (e.g. `text-embedding-3-small` / `1536`). |
-| CourtListener (authenticated) | `SUZIELAW_COURTLISTENER_TOKEN=...` | Free token at courtlistener.com/profile/api/. The US case-law provider works without it at lower rate limits. |
-| Légifrance / Judilibre (France) | `SUZIELAW_PISTE_CLIENT_ID=...` + `SUZIELAW_PISTE_CLIENT_SECRET=...` and/or `SUZIELAW_JUDILIBRE_API_KEY=...` | OAuth credentials from PISTE (api.gouv.fr). Without them, the FR providers stay unregistered; the other 17 jurisdictions are unaffected. |
-| Indian Kanoon | `SUZIELAW_INDIANKANOON_API_KEY=...` | Paid API key from indiankanoon.org. Provider stays unregistered without it. |
-| Local models (Qwen / Gemma) | Stand up a vLLM/llama.cpp/unsloth server, set `SUZIELAW_LOCAL_QWEN_BASE_URL` and/or `_GEMMA_BASE_URL` | Default ports 8801 + 8802. The model picker routes to these endpoints when a Local row is selected. |
-| MCP servers | Set `SUZIELAW_MCP_CONFIG=./mcp.json` | Standard Claude-Desktop-shape config. Loaded tools surface as `<server>__<tool>` in the agent. |
-| Stripe billing | `SUZIELAW_STRIPE_SECRET_KEY=sk_test_…` + `SUZIELAW_STRIPE_WEBHOOK_SECRET=whsec_…` | Turns on the credit-balance paywall on `/api/chat`. See [Enabling billing locally](#enabling-billing-locally). Tune `SUZIELAW_BILLING_USD_PER_1K_TOKENS` to match your model cost. |
+| Knowledge Base / RAG | `SCOPIC_KB_ENABLED=true` + pick an embedding model | Defaults reuse the chat agent's base URL + key. Set `SCOPIC_KB_EMBEDDING_MODEL` and `_DIM` per provider (e.g. `text-embedding-3-small` / `1536`). |
+| CourtListener (authenticated) | `SCOPIC_COURTLISTENER_TOKEN=...` | Free token at courtlistener.com/profile/api/. The US case-law provider works without it at lower rate limits. |
+| Légifrance / Judilibre (France) | `SCOPIC_PISTE_CLIENT_ID=...` + `SCOPIC_PISTE_CLIENT_SECRET=...` and/or `SCOPIC_JUDILIBRE_API_KEY=...` | OAuth credentials from PISTE (api.gouv.fr). Without them, the FR providers stay unregistered; the other 17 jurisdictions are unaffected. |
+| Indian Kanoon | `SCOPIC_INDIANKANOON_API_KEY=...` | Paid API key from indiankanoon.org. Provider stays unregistered without it. |
+| Local models (Qwen / Gemma) | Stand up a vLLM/llama.cpp/unsloth server, set `SCOPIC_LOCAL_QWEN_BASE_URL` and/or `_GEMMA_BASE_URL` | Default ports 8801 + 8802. The model picker routes to these endpoints when a Local row is selected. |
+| MCP servers | Set `SCOPIC_MCP_CONFIG=./mcp.json` | Standard Claude-Desktop-shape config. Loaded tools surface as `<server>__<tool>` in the agent. |
+| Stripe billing | `SCOPIC_STRIPE_SECRET_KEY=sk_test_…` + `SCOPIC_STRIPE_WEBHOOK_SECRET=whsec_…` | Turns on the credit-balance paywall on `/api/chat`. See [Enabling billing locally](#enabling-billing-locally). Tune `SCOPIC_BILLING_USD_PER_1K_TOKENS` to match your model cost. |
 
 ### Enabling billing locally
 
-The billing tables (`org_billing`, `billing_transaction`) are always created — the paywall is what's gated on `SUZIELAW_STRIPE_SECRET_KEY`. To exercise the full flow end-to-end:
+The billing tables (`org_billing`, `billing_transaction`) are always created — the paywall is what's gated on `SCOPIC_STRIPE_SECRET_KEY`. To exercise the full flow end-to-end:
 
 1. Get a Stripe test secret key from <https://dashboard.stripe.com/test/apikeys> and put it in `.env`:
    ```bash
-   SUZIELAW_STRIPE_SECRET_KEY=sk_test_...
+   SCOPIC_STRIPE_SECRET_KEY=sk_test_...
    ```
 2. Install the [Stripe CLI](https://stripe.com/docs/stripe-cli) and forward webhooks to the local server:
    ```bash
    stripe listen --forward-to http://localhost:17501/api/billing/webhook
    ```
-   The CLI prints a signing secret — paste it into `.env` as `SUZIELAW_STRIPE_WEBHOOK_SECRET=whsec_...` and restart suzielaw.
+   The CLI prints a signing secret — paste it into `.env` as `SCOPIC_STRIPE_WEBHOOK_SECRET=whsec_...` and restart Scopic.
 3. Turn off the dev bypass so the paywall actually fires:
    ```bash
-   SUZIELAW_AUTH_BYPASS=false
+   SCOPIC_AUTH_BYPASS=false
    ```
 4. Open the app, log in, try to send a chat — the paywall dialog opens. Click **Add credits** → redirected to Stripe Checkout → pay with test card `4242 4242 4242 4242` (any future expiry, any CVC) → bounce back to the app. The sidebar pill shows the new balance and `/api/chat` is unblocked. Per-turn deductions hit `org_billing.credit_balance`; the full ledger is at `/billing`.
 
@@ -176,7 +176,7 @@ The billing surface (`@teamsuzie/billing-stripe`) ships its own README documenti
     packages/approvals/                   # human-in-the-loop approval queue
     packages/shared-auth/                 # Multi-tenant auth: users/orgs/sessions, Postgres + Redis, CSRF
     packages/billing-stripe/              # Stripe credit-balance billing (org_billing, paywall middleware, webhooks)
-  suzielaw/                               # this repo
+  scopic/                                 # this repo
     docker/docker-compose.yml             # Postgres + Redis for shared-auth (host ports 5433 + 6380)
     apps/suzielaw/                        # Express + Vite app
       client/src/                         # React UI (consumes @teamsuzie/ui)
@@ -193,7 +193,7 @@ Legal-domain content lives in this repo. The chat shell, UI primitives, agent lo
 
 ## Why a separate repo
 
-Team Suzie's README has a section *"Building your app in a separate repo"* — Suzie Law is the canonical example. Improvements to the platform (chat shell, UI primitives, agent loop, document tools, persona/KB runtimes, conversion service) go upstream to `firelex/open_teamsuzie main`. Improvements to the legal product (practice areas, prompts, workflows, branding, builtin persona content) stay here.
+Team Suzie's README has a section *"Building your app in a separate repo"* — Scopic is the canonical example. Improvements to the platform (chat shell, UI primitives, agent loop, document tools, persona/KB runtimes, conversion service) go upstream to `firelex/open_teamsuzie main`. Improvements to the legal product (practice areas, prompts, workflows, branding, builtin persona content) stay here.
 
 In practice, that means most fixes that look like "the chat does X better" land upstream — and downstream simply pulls and rebuilds. Downstream commits tend to be feature-flagged content additions rather than UX rewrites.
 
@@ -219,7 +219,7 @@ The venv must be active before running uvicorn. If activation isn't working, che
 
 DOCX conversion runs in-process via `mammoth + turndown` and doesn't need the agent. For PDF/PPTX/XLSX/etc., conversion happens over HTTP to `markitdown-agent`. If the agent reports a failure:
 
-1. Confirm `SUZIELAW_MARKITDOWN_AGENT_BASE_URL` is set in `apps/suzielaw/.env`.
+1. Confirm `SCOPIC_MARKITDOWN_AGENT_BASE_URL` is set in `apps/suzielaw/.env`.
 2. `curl http://localhost:3013/health` should return `{"status":"ok",...}`.
 3. The uploaded file shouldn't exceed `MARKITDOWN_AGENT_MAX_UPLOAD_BYTES` (default 50MB).
 
@@ -236,7 +236,7 @@ If it persists after a fresh dev start, the offending package needs a subpath ex
 
 ### Knowledge Base: "Embedding dimension mismatch"
 
-The `kb_chunk_vectors` virtual table is created with a fixed dim on first KB insert. If you change `SUZIELAW_KB_EMBEDDING_DIM` after that — or swap to a model with a different output dim — embeddings will be rejected. Either revert the dim, pick a model with the original dim, or wipe the KB tables (`DELETE FROM kb_documents; DELETE FROM kb_chunk_vectors;`) and start over.
+The `kb_chunk_vectors` virtual table is created with a fixed dim on first KB insert. If you change `SCOPIC_KB_EMBEDDING_DIM` after that — or swap to a model with a different output dim — embeddings will be rejected. Either revert the dim, pick a model with the original dim, or wipe the KB tables (`DELETE FROM kb_documents; DELETE FROM kb_chunk_vectors;`) and start over.
 
 ---
 
