@@ -59,13 +59,13 @@ jobs:
 
       - name: Install dependencies
         working-directory: scopic
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.node-linker=hoisted
 
       - name: Build desktop artifact
         working-directory: scopic
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm dist
+        run: pnpm dist -- --publish never
 
       - name: Upload artifact to release
         uses: softprops/action-gh-release@v2
