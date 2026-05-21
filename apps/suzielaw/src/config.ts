@@ -15,7 +15,7 @@ for (const [key, value] of Object.entries(process.env)) {
 const SKILL_VAR_PREFIX = 'SCOPIC_SKILL_VAR_';
 const DEFAULT_QWEN_MODEL = 'qwen3.6-plus';
 const DEFAULT_QWEN_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode';
-const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434/v1';
+const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
 function collectSkillRenderContext(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -46,6 +46,10 @@ function parseJsonObject(value: string | undefined): Record<string, unknown> | u
 
 function defaultExtraBody(model: string): Record<string, unknown> | undefined {
   return model.toLowerCase().includes('qwen') ? { enable_thinking: false } : undefined;
+}
+
+function normalizeOpenAICompatibleBaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, '').replace(/\/v1$/i, '');
 }
 
 const DEFAULT_SYSTEM_PROMPT = `You are Counsel, the AI legal assistant in the Scopic platform.
@@ -142,7 +146,7 @@ export const config = {
   modelAgents: {
     ...buildLocalAgentRegistry(LOCAL_MODELS, process.env, 'SCOPIC'),
     ollama: {
-      baseUrl: (process.env.SCOPIC_OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL).replace(/\/$/, ''),
+      baseUrl: normalizeOpenAICompatibleBaseUrl(process.env.SCOPIC_OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL),
       apiKey: process.env.SCOPIC_OLLAMA_API_KEY || undefined,
     },
   },

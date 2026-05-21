@@ -1,6 +1,6 @@
 export const OLLAMA_MODEL_ID = 'ollama';
 export const OLLAMA_PROVIDER_ID = 'ollama';
-export const OLLAMA_BASE_URL = 'http://localhost:11434/v1';
+export const OLLAMA_BASE_URL = 'http://localhost:11434';
 export const OLLAMA_TAGS_URL = 'http://localhost:11434/api/tags';
 export const SELECTED_OLLAMA_MODEL_KEY = 'scopic:ollama-model';
 

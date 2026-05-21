@@ -27,6 +27,7 @@ import type { ModelCtor } from 'sequelize-typescript';
 import { ApprovalQueue, InMemoryApprovalStore } from '@teamsuzie/approvals';
 import {
   connectMcpServers,
+  LOCAL_MODELS,
   loadSkills,
   parseMcpConfigFile,
   resolveAgentTarget,
@@ -34,6 +35,7 @@ import {
   tools as builtInTools,
   type AnyToolDefinition,
   type ChatMessage,
+  type LocalModel,
   type McpManager,
   type SkillLoadResult,
   type ToolContext,
@@ -126,6 +128,21 @@ const fileStore = new InMemoryFileStore();
 const docStore = new InMemoryDocumentStore();
 const tokenBudget = new TokenBudgetStore(db, config.tokenBudget.defaultLimit);
 const OLLAMA_PROVIDER_ID = 'ollama';
+const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434';
+const OLLAMA_LOCAL_MODEL: LocalModel = {
+  id: OLLAMA_PROVIDER_ID,
+  name: 'Ollama (Local)',
+  provider: 'Ollama',
+  description: 'Use a model running locally in Ollama.',
+  local: true,
+  installUrl: 'https://ollama.com/download',
+  envSuffix: 'OLLAMA',
+  defaultBaseUrl: OLLAMA_DEFAULT_BASE_URL,
+};
+
+function normalizeOpenAICompatibleBaseUrl(value: string | undefined): string | undefined {
+  return value?.trim().replace(/\/+$/, '').replace(/\/v1$/i, '');
+}
 
 let skillState: SkillLoadResult = { skills: [], systemPrompt: '', derivedHosts: [] };
 let mcp: McpManager = { tools: [], status: [], shutdown: async () => {} };
@@ -157,7 +174,36 @@ if (personaRegistry.listBuiltins().length > 0) {
 }
 
 // Per-user model-endpoint overrides (the editable config behind each Local row).
-const modelSettings = new ModelSettingsStore({ db, envRegistry: config.modelAgents });
+const modelSettings = new ModelSettingsStore({
+  db,
+  envRegistry: config.modelAgents,
+  localModels: [...LOCAL_MODELS, OLLAMA_LOCAL_MODEL],
+});
+
+function ownerPersonaCount(ownerId: string): number {
+  const row = db.prepare<[string], { n: number }>(
+    `SELECT COUNT(*) AS n FROM personas WHERE owner_id = ?`,
+  ).get(ownerId);
+  return row?.n ?? 0;
+}
+
+function seedBuiltinPersonasForOwner(ownerId: string): void {
+  const builtinCount = personaRegistry.listBuiltins().length;
+  if (builtinCount === 0) return;
+
+  // v1.1.2 could mark the packaged demo user as "seeded" before the built-in
+  // persona directory was wired into Electron. Repair that empty marker so
+  // existing installs get the 12 Suzie Law personas after updating.
+  if (personaRegistry.isSeeded(ownerId) && ownerPersonaCount(ownerId) === 0) {
+    db.prepare<[string]>(`DELETE FROM personas_seeded WHERE owner_id = ?`).run(ownerId);
+    console.warn(`Personas: repaired empty seed marker for ${ownerId}; restoring ${builtinCount} built-in personas.`);
+  }
+
+  const result = personaRegistry.seedFromBuiltinsIfNeeded(ownerId);
+  if (result.seeded && result.count > 0) {
+    console.log(`Personas: seeded ${result.count} built-in persona(s) for ${ownerId}.`);
+  }
+}
 
 // Workspaces (legal apps surface them as "Matters") — schema lives upstream;
 // the Scopic API mounts this at /api/matters to match the UI label.
@@ -405,7 +451,7 @@ app.use(
   // `personas_seeded` marker table.
   (req, _res, next) => {
     const email = getSessionUser(req)?.email;
-    if (email) personaRegistry.seedFromBuiltinsIfNeeded(email);
+    if (email) seedBuiltinPersonasForOwner(email);
     next();
   },
   createPersonasRouter({
@@ -1091,6 +1137,9 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
       model: wireModelIdFor(uiModelId),
       extraBody: extraBodyForProvider(cloudProvider),
     };
+  }
+  for (const target of Object.values(userRegistry)) {
+    if (target.baseUrl) target.baseUrl = normalizeOpenAICompatibleBaseUrl(target.baseUrl);
   }
   overlayBYOK(effectiveModel);
   overlayBYOK(config.agent.simpleModel);
