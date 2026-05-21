@@ -78,6 +78,7 @@ import {
   CLOUD_PROVIDERS,
   CLOUD_PROVIDER_IDS,
   extraBodyForProvider,
+  fetchProviderModels,
   providerForModel,
   wireModelIdFor,
 } from './cloud-providers.js';
@@ -421,6 +422,40 @@ app.use(
     providerIds: CLOUD_PROVIDER_IDS,
   }),
 );
+
+// Live model catalog for a cloud provider. Uses the caller's saved key to
+// query the provider's own /v1/models endpoint so the picker shows whatever
+// models the account can actually call — including ones newer than this code.
+// Falls back to the provider's curated seed list if the fetch fails (offline,
+// rate-limited, key lacks list scope, …) so the picker is never empty.
+app.get('/api/cloud-models/:providerId', requireAuth, async (req, res) => {
+  const provider = CLOUD_PROVIDERS.find((p) => p.id === req.params.providerId);
+  if (!provider) {
+    res.status(404).json({ error: 'unknown_provider' });
+    return;
+  }
+  const email = getSessionUser(req)?.email;
+  const apiKey = email ? modelSettings.getProviderKey(email, provider.id) : undefined;
+  if (!apiKey) {
+    res.status(400).json({ error: 'no_key', provider: provider.id });
+    return;
+  }
+  const fallback = provider.modelIds.map((id) => ({
+    id,
+    name: provider.modelPrefix ? id.slice(provider.modelPrefix.length) : id,
+  }));
+  try {
+    const models = await fetchProviderModels(provider, apiKey);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ provider: provider.id, models: models.length > 0 ? models : fallback });
+  } catch (err) {
+    res.json({
+      provider: provider.id,
+      models: fallback,
+      warning: err instanceof Error ? err.message : 'live model list unavailable',
+    });
+  }
+});
 // Shadow POST /api/matters so we can grant the creator owner role in
 // the same call. The workspaces router's POST has no hook for this,
 // and we don't want to add one upstream until/unless multi-tenant

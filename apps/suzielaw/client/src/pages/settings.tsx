@@ -14,6 +14,7 @@ import {
 } from '../data/ollama.js';
 import { useModelSettings } from '../hooks/use-model-settings.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
+import { useCloudModels } from '../hooks/use-cloud-models.js';
 import {
   ProviderKeysCard,
   type ProviderDisplay,
@@ -133,22 +134,35 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
   // BYOK gate: a cloud model is visible iff (a) it's the configured
   // default — the demo-budget always covers it — or (b) the user has set
   // a provider key for its provider. Local models are always visible.
+  const providerIdsWithKeys = useMemo(
+    () => providerKeys.providers.filter((p) => p.hasKey).map((p) => p.providerId),
+    [providerKeys.providers],
+  );
+  const liveModels = useCloudModels(providerIdsWithKeys);
+
   const models: ModelOption[] = useMemo(() => {
     const byId = new Map(modelSettings.settings.map((s) => [s.modelId, s]));
     const keysByProvider = new Map(
       providerKeys.providers.map((p) => [p.providerId, p]),
     );
-    return MODELS.filter((m) => {
-      if (m.local) return true;
-      if (m.id === defaultModel) return true;
-      const providerId = MODEL_PROVIDER_ID[m.id];
-      if (!providerId) return false;
-      return keysByProvider.get(providerId)?.hasKey ?? false;
-    }).map((m) => {
+    const merged = new Map<string, ModelOption>();
+    // Curated seeds (default, local, and known ids for keyed providers).
+    for (const m of MODELS) {
+      const usable =
+        m.local ||
+        m.id === defaultModel ||
+        (MODEL_PROVIDER_ID[m.id]
+          ? keysByProvider.get(MODEL_PROVIDER_ID[m.id]!)?.hasKey ?? false
+          : false);
+      if (usable) merged.set(m.id, m);
+    }
+    // Live catalog from each keyed provider's /v1/models — newest first.
+    for (const m of liveModels.models) merged.set(m.id, m);
+    return Array.from(merged.values()).map((m) => {
       const setting = byId.get(m.id);
       return setting ? { ...m, resolvedBaseUrl: setting.baseUrl } : m;
     });
-  }, [modelSettings.settings, providerKeys.providers, defaultModel]);
+  }, [modelSettings.settings, providerKeys.providers, defaultModel, liveModels.models]);
 
   const configuringSetting = configuringModel
     ? modelSettings.settings.find((s) => s.modelId === configuringModel.id)

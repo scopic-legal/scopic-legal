@@ -65,6 +65,15 @@ export function ComposerModelPicker({
       ? `${OLLAMA_VALUE_PREFIX}${readSelectedOllamaModel() ?? ''}`
       : selectedModel ?? defaultModelId ?? '';
 
+  // Group cloud models by their provider label for readable optgroups.
+  const groups = new Map<string, ModelOption[]>();
+  for (const m of models) {
+    const label = m.provider || 'Cloud';
+    const list = groups.get(label) ?? [];
+    list.push(m);
+    groups.set(label, list);
+  }
+
   function handleChange(value: string) {
     if (value.startsWith(OLLAMA_VALUE_PREFIX)) {
       const name = value.slice(OLLAMA_VALUE_PREFIX.length);
@@ -84,13 +93,15 @@ export function ComposerModelPicker({
         onChange={(event) => handleChange(event.target.value)}
         className="h-7 max-w-[180px] truncate border border-foreground/20 bg-background px-2 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/70 hover:border-foreground/40 hover:text-foreground focus:border-foreground focus:outline-none focus:ring-1 focus:ring-saffron-400 disabled:opacity-50"
       >
-        <optgroup label="Cloud">
-          {models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </optgroup>
+        {Array.from(groups.entries()).map(([label, list]) => (
+          <optgroup key={label} label={label}>
+            {list.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </optgroup>
+        ))}
         {ollamaModels.length > 0 && (
           <optgroup label="Local (Ollama)">
             {ollamaModels.map((name) => (

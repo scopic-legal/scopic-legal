@@ -26,8 +26,10 @@ import { useChatComposer } from '../hooks/use-chat-composer.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { PaywallDialog } from '../components/paywall-dialog.js';
 import { ComposerModelPicker } from '../components/composer-model-picker.js';
+import { useCloudModels } from '../hooks/use-cloud-models.js';
 import { MODELS, MODEL_PROVIDER_ID } from '../data/models.js';
 import { selectedModelPayload } from '../data/ollama.js';
+import type { ModelOption } from '@teamsuzie/ui';
 import {
   TrackedChangesPanel,
   type ProposeEditsResult,
@@ -384,21 +386,34 @@ export function AssistantPage({
   // Used to detect first-run: when a 401/API-key error fires and no
   // provider key has ever been saved, auto-navigate to Settings.
   const providerKeys = useProviderKeys();
-  // Models offered by the in-composer picker: the configured default (demo
-  // budget) plus any cloud model whose provider key the user has saved.
-  // Mirrors the Settings page gate. Ollama is handled inside the picker.
+  // Provider ids the user has a key for — drives the live model fetch.
+  const providerIdsWithKeys = useMemo(
+    () => providerKeys.providers.filter((p) => p.hasKey).map((p) => p.providerId),
+    [providerKeys.providers],
+  );
+  const liveModels = useCloudModels(providerIdsWithKeys);
+  // Models offered by the in-composer picker. Curated seeds (the configured
+  // default + known ids for providers with a key) show immediately; the live
+  // catalog from each provider's /v1/models is merged in once loaded, so the
+  // newest models appear without any code change. Deduped by id. Ollama is
+  // handled separately inside the picker.
   const composerModels = useMemo(() => {
     const keysByProvider = new Map(
       providerKeys.providers.map((p) => [p.providerId, p]),
     );
-    return MODELS.filter((m) => {
-      if (m.local) return false; // Ollama is listed separately in the picker.
-      if (m.id === defaultModel) return true;
-      const providerId = MODEL_PROVIDER_ID[m.id];
-      if (!providerId) return false;
-      return keysByProvider.get(providerId)?.hasKey ?? false;
-    });
-  }, [providerKeys.providers, defaultModel]);
+    const byId = new Map<string, ModelOption>();
+    for (const m of MODELS) {
+      if (m.local) continue;
+      const usable =
+        m.id === defaultModel ||
+        (MODEL_PROVIDER_ID[m.id]
+          ? keysByProvider.get(MODEL_PROVIDER_ID[m.id]!)?.hasKey ?? false
+          : false);
+      if (usable) byId.set(m.id, m);
+    }
+    for (const m of liveModels.models) byId.set(m.id, m);
+    return Array.from(byId.values());
+  }, [providerKeys.providers, defaultModel, liveModels.models]);
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
