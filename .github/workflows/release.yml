@@ -107,7 +107,7 @@ jobs:
             gh release create $tag `
               --repo "${{ github.repository }}" `
               --title "Scopic $tag" `
-              --notes "Auto-update release. Download the Windows installer asset named Scopic Setup $($tag.TrimStart('v')).exe."
+              --notes "Auto-update release. Download the Windows installer asset named Scopic-Setup-$($tag.TrimStart('v')).exe."
           }
 
       # electron-builder reads GH_TOKEN to upload artifacts to the release that
@@ -138,8 +138,37 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = "${{ github.ref_name }}"
-          $assets = Get-ChildItem dist-electron -File |
-            Where-Object { $_.Name -match '(^Scopic\.Setup\..*\.exe$|^Scopic\.Setup\..*\.exe\.blockmap$|^latest\.yml$)' }
+          $latest = Get-Item "dist-electron\latest.yml" -ErrorAction SilentlyContinue
+          if (-not $latest) {
+            Write-Host "::error::dist-electron\latest.yml was not produced"
+            Get-ChildItem dist-electron -File | ForEach-Object { Write-Host "dist-electron file: $($_.Name)" }
+            exit 1
+          }
+
+          $latestContent = Get-Content $latest.FullName -Raw
+          $pathMatch = [regex]::Match($latestContent, '(?m)^path:\s*(.+?)\s*$')
+          if (-not $pathMatch.Success) {
+            Write-Host "::error::latest.yml does not contain an installer path"
+            Write-Host $latestContent
+            exit 1
+          }
+
+          $installerName = $pathMatch.Groups[1].Value.Trim().Trim('"').Trim("'")
+          $installer = Get-Item (Join-Path "dist-electron" $installerName) -ErrorAction SilentlyContinue
+          if (-not $installer) {
+            Write-Host "::error::latest.yml points to '$installerName', but that file is missing from dist-electron"
+            Get-ChildItem dist-electron -File | ForEach-Object { Write-Host "dist-electron file: $($_.Name)" }
+            exit 1
+          }
+
+          $assets = @($installer)
+          $blockmap = Get-Item (Join-Path "dist-electron" "$installerName.blockmap") -ErrorAction SilentlyContinue
+          if ($blockmap) {
+            $assets += $blockmap
+          } else {
+            Write-Host "::warning::No blockmap found for $installerName"
+          }
+          $assets += $latest
 
           if (-not $assets) {
             Write-Host "::error::No installer assets found in dist-electron"

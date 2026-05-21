@@ -218,7 +218,7 @@ app.whenReady().then(async () => {
     await waitForReady();
     log('services ready; creating window');
     createWindow();
-    setTimeout(() => initAutoUpdater(), 3_000);
+    setTimeout(() => initAutoUpdater(mainWindow), 3_000);
   } catch (error) {
     log(`startup failed: ${error instanceof Error ? error.stack || error.message : String(error)}`);
     dialog.showErrorBox(
