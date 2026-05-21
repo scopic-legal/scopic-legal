@@ -26,6 +26,9 @@ await build({
   platform: 'node',
   // ESM keeps import.meta.url semantics intact — required by the server source.
   format: 'esm',
+  banner: {
+    js: 'import { createRequire } from "node:module";\nconst require = createRequire(import.meta.url);',
+  },
   outfile: path.join(root, 'apps/suzielaw/dist/server.mjs'),
   external: [
     // ── Native C++ addons (cannot be bundled) ──────────────────────────────

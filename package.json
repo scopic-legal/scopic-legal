@@ -1,6 +1,6 @@
 {
   "name": "scopic",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Scopic legal AI platform built on Team Suzie",
   "license": "MIT",
@@ -88,7 +88,7 @@
       "node_modules/better-sqlite3/**/*",
       "node_modules/sqlite-vec/**/*"
     ],
-    "npmRebuild": false
+    "npmRebuild": true
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
