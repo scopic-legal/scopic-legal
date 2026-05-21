@@ -54,9 +54,19 @@ export const CLOUD_PROVIDERS: CloudProvider[] = [
     id: 'openai',
     label: 'OpenAI',
     baseUrl: 'https://api.openai.com',
-    modelIds: ['openai/gpt-5.5'],
-    wireModelIds: { 'openai/gpt-5.5': 'gpt-5.5' },
-    hint: 'Powers GPT-5.5. Add a key from your OpenAI account — usage is billed to your account.',
+    modelIds: [
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'openai/gpt-4.1',
+      'openai/gpt-4.1-mini',
+    ],
+    wireModelIds: {
+      'openai/gpt-4o': 'gpt-4o',
+      'openai/gpt-4o-mini': 'gpt-4o-mini',
+      'openai/gpt-4.1': 'gpt-4.1',
+      'openai/gpt-4.1-mini': 'gpt-4.1-mini',
+    },
+    hint: 'Add a key from your OpenAI account — usage is billed to your account. Pick the GPT model that your account has access to.',
     keyUrl: 'https://platform.openai.com/api-keys',
   },
   {

@@ -116,6 +116,11 @@ function startBackend() {
 
   // server.mjs is the esbuild-produced self-contained ESM bundle (no pnpm junctions).
   const serverEntry = appPath('apps', 'suzielaw', 'dist', 'server.mjs');
+  // Bundled content dirs live next to the server inside the packaged app.
+  // The dev .env points these at relative paths; in the packaged build there
+  // is no .env, so pass absolute paths explicitly or the built-in personas /
+  // templates / workflow skills never load (only "Default Counsel" appears).
+  const suzielawDir = appPath('apps', 'suzielaw');
   backendProcess = spawnLogged(process.execPath, [serverEntry], {
     cwd: appDir,
     env: childEnv({
@@ -124,6 +129,9 @@ function startBackend() {
       SCOPIC_PORT: '17502',
       SCOPIC_PUBLIC_URL: APP_URL,
       SCOPIC_ALLOWED_ORIGIN: APP_URL,
+      SCOPIC_PERSONAS_DIR: path.join(suzielawDir, 'personas'),
+      SCOPIC_TEMPLATES_DIR: path.join(suzielawDir, 'templates'),
+      SCOPIC_SKILLS_DIR: path.join(suzielawDir, 'skills'),
     }),
     name: 'scopic-backend',
   });

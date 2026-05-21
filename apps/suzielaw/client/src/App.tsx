@@ -73,6 +73,7 @@ function AssistantChatRoute(props: {
   persona: ReturnType<typeof usePersonas>['personas'][number] | null;
   onOpenPicker: () => void;
   onSelectPersonaId: (id: string | null) => void;
+  defaultModel?: string;
 }) {
   const { chatId } = useParams<{ chatId: string }>();
   return <AssistantPage {...props} chatId={chatId} />;
@@ -421,6 +422,7 @@ export default function App() {
                         persona={selectedPersona}
                         onOpenPicker={() => setPickerOpen(true)}
                         onSelectPersonaId={setSelectedPersonaId}
+                        defaultModel={health?.agent?.model}
                       />
                     }
                   />
@@ -432,6 +434,7 @@ export default function App() {
                         persona={selectedPersona}
                         onOpenPicker={() => setPickerOpen(true)}
                         onSelectPersonaId={setSelectedPersonaId}
+                        defaultModel={health?.agent?.model}
                       />
                     }
                   />

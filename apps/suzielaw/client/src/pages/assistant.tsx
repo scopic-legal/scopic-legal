@@ -25,6 +25,8 @@ import { useAssistantChats } from '../hooks/use-assistant-chats.js';
 import { useChatComposer } from '../hooks/use-chat-composer.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { PaywallDialog } from '../components/paywall-dialog.js';
+import { ComposerModelPicker } from '../components/composer-model-picker.js';
+import { MODELS, MODEL_PROVIDER_ID } from '../data/models.js';
 import { selectedModelPayload } from '../data/ollama.js';
 import {
   TrackedChangesPanel,
@@ -320,6 +322,8 @@ export interface AssistantPageProps {
   onSelectPersonaId: (id: string | null) => void;
   /** When set, the page is bound to a persisted top-level Assistant chat. */
   chatId?: string;
+  /** Server's configured default model id (from /api/health). */
+  defaultModel?: string;
 }
 
 export function AssistantPage({
@@ -328,6 +332,7 @@ export function AssistantPage({
   onOpenPicker,
   onSelectPersonaId,
   chatId,
+  defaultModel,
 }: AssistantPageProps) {
   const displayName = persona?.name ?? agentName;
   // Stable per-render-tab session id used for paperclip uploads. When chatId
@@ -368,12 +373,32 @@ export function AssistantPage({
   /** All attachments uploaded in this session, keyed by file_id. Survives `setAttachments([])` after send so chip-click can still resolve a citation's `doc` handle. */
   const [attachmentsById, setAttachmentsById] = useState<Record<string, Attachment>>({});
   const { openDoc } = useDocSidePanel();
-  // Reads the model selection persisted by the Settings page (if any).
-  // Server falls back to its configured default when undefined.
-  const [selectedModel] = useSelectedModel(SELECTED_MODEL_KEY);
+  // Model selection shared with the Settings page via localStorage. The
+  // in-composer picker writes the same key, so switching models from either
+  // place stays in sync. Server falls back to its configured default when
+  // undefined.
+  const [selectedModel, setSelectedModel] = useSelectedModel(
+    SELECTED_MODEL_KEY,
+    defaultModel,
+  );
   // Used to detect first-run: when a 401/API-key error fires and no
   // provider key has ever been saved, auto-navigate to Settings.
   const providerKeys = useProviderKeys();
+  // Models offered by the in-composer picker: the configured default (demo
+  // budget) plus any cloud model whose provider key the user has saved.
+  // Mirrors the Settings page gate. Ollama is handled inside the picker.
+  const composerModels = useMemo(() => {
+    const keysByProvider = new Map(
+      providerKeys.providers.map((p) => [p.providerId, p]),
+    );
+    return MODELS.filter((m) => {
+      if (m.local) return false; // Ollama is listed separately in the picker.
+      if (m.id === defaultModel) return true;
+      const providerId = MODEL_PROVIDER_ID[m.id];
+      if (!providerId) return false;
+      return keysByProvider.get(providerId)?.hasKey ?? false;
+    });
+  }, [providerKeys.providers, defaultModel]);
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -1088,6 +1113,13 @@ export function AssistantPage({
                   <Sparkles className="size-3.5" aria-hidden />
                   Workflow
                 </button>
+                <ComposerModelPicker
+                  models={composerModels}
+                  selectedModel={selectedModel}
+                  defaultModelId={defaultModel}
+                  onSelectModel={setSelectedModel}
+                  disabled={isStreaming}
+                />
                 <p className="ml-3 hidden font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/35 sm:inline">
                   ↵ sends · ⇧↵ newline
                 </p>
