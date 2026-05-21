@@ -306,7 +306,8 @@ function rebuildToolCtx(): void {
 // store eagerly. Postgres `authenticate()` + `sync()` still happen in main()
 // before the listener starts.
 type ModelWithAssociate = ModelCtor & { associate?: (models: unknown) => void };
-const sequelizeService = new SequelizeService(
+const authBypassEnabled = process.env.SCOPIC_AUTH_BYPASS === 'true';
+const sequelizeService = authBypassEnabled ? null : new SequelizeService(
   sharedAuthConfig,
   [
     User, Organization, OrganizationMember, OrgDomain, Agent, AgentProfile,
@@ -314,13 +315,13 @@ const sequelizeService = new SequelizeService(
     OrgBilling, BillingTransaction,
   ] as ModelWithAssociate[],
 );
-const sessionService = new SessionService(sharedAuthConfig);
+const sessionService = authBypassEnabled ? null : new SessionService(sharedAuthConfig);
 
 // Stripe billing. When SCOPIC_STRIPE_SECRET_KEY is unset (free / OSS demo
 // mode), the service object still exists but every Stripe call throws and
 // requireCreditedOrg returns 402 for everyone. The DB tables are created
 // either way so flipping the env var later doesn't need a migration.
-const billingService = new BillingService({
+const billingService = sequelizeService ? new BillingService({
   redisUrl: sharedAuthConfig.redis.uri,
   sequelize: sequelizeService.getSequelize(),
   stripeSecretKey: config.billing.stripeSecretKey,
@@ -328,7 +329,7 @@ const billingService = new BillingService({
   initialCreditsUsd: config.billing.initialCreditsUsd,
   topUpAmountUsd: config.billing.topUpAmountUsd,
   lowBalanceThresholdUsd: config.billing.lowBalanceThresholdUsd,
-});
+}) : null;
 
 const app = express();
 app.use(cors({ origin: config.allowedOrigin, credentials: true }));
@@ -336,18 +337,20 @@ app.use(cors({ origin: config.allowedOrigin, credentials: true }));
 // verification needs the raw body. The webhook router uses express.raw()
 // internally. Skipped entirely when billing is disabled (no STRIPE_SECRET_KEY)
 // since constructWebhookEvent would just throw on every event.
-if (config.billing.enabled) {
+if (config.billing.enabled && billingService) {
   app.use('/api/billing/webhook', createBillingWebhookRouter({ service: billingService }));
 }
 app.use(express.json({ limit: '2mb' }));
-sessionService.init(app);
-app.use(createCsrfMiddleware({
+sessionService?.init(app);
+if (!authBypassEnabled) {
+  app.use(createCsrfMiddleware({
     cookieName: 'scopic.csrf',
     // Mothership webhooks authenticate via X-Platform-Token (handled by
     // createPlatformTokenGuard inside the router) — they have no CSRF cookie
     // because they're server-to-server, not browser-driven.
     skipPaths: ['/api/webhook/mothership', '/api/webhook/mothership/'],
-}));
+  }));
+}
 app.use('/api', createAuthRouter({ budget: tokenBudget }));
 app.use(
   '/api',
@@ -361,16 +364,30 @@ app.use(
 // Always mounted — even when STRIPE_SECRET_KEY is unset the /status endpoint
 // is useful for the client to detect that billing is disabled (returns
 // { billing: null }).
-app.use('/api/billing', createBillingRouter({
-  service: billingService,
-  requireAuth,
-}));
+if (billingService) {
+  app.use('/api/billing', createBillingRouter({
+    service: billingService,
+    requireAuth,
+  }));
+} else {
+  const billingDisabledRouter = express.Router();
+  billingDisabledRouter.get('/status', (_req, res) => {
+    res.json({ billing: null, org_id: null });
+  });
+  billingDisabledRouter.get('/transactions', (_req, res) => {
+    res.json({ transactions: [] });
+  });
+  billingDisabledRouter.use((_req, res) => {
+    res.status(400).json({ error: 'billing_disabled' });
+  });
+  app.use('/api/billing', billingDisabledRouter);
+}
 
 // Paywall middleware applied to cost-incurring routes below. When billing is
 // disabled (no Stripe key) we skip the check entirely so OSS users can run
 // Scopic without a Stripe account — flip SCOPIC_STRIPE_SECRET_KEY on to
 // enforce pay-to-use.
-const requireCreditedOrg: express.RequestHandler = config.billing.enabled
+const requireCreditedOrg: express.RequestHandler = config.billing.enabled && billingService
   ? createRequireCreditedOrg({ service: billingService })
   : (_req, _res, next) => next();
 // /api/user-prompts is gone — replaced by /api/workflows. Existing
@@ -792,6 +809,8 @@ if (config.kb.enabled) {
   );
 }
 
+const HEALTH_AGENT_PROBE_TIMEOUT_MS = 750;
+
 app.get('/api/health', async (_req, res) => {
   try {
     let reachable = false;
@@ -799,7 +818,7 @@ app.get('/api/health', async (_req, res) => {
 
     try {
       await fetch(`${config.agent.baseUrl}/health`, {
-        signal: AbortSignal.timeout(5_000),
+        signal: AbortSignal.timeout(HEALTH_AGENT_PROBE_TIMEOUT_MS),
       });
       reachable = true;
     } catch (error) {
@@ -809,7 +828,7 @@ app.get('/api/health', async (_req, res) => {
     if (!reachable) {
       try {
         const probe = await fetch(config.agent.baseUrl, {
-          signal: AbortSignal.timeout(5_000),
+          signal: AbortSignal.timeout(HEALTH_AGENT_PROBE_TIMEOUT_MS),
         });
         reachable = probe.status > 0;
         runtimeError = '';
@@ -1383,7 +1402,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     // cumulative per-account, so the delta = (after - before) is what this
     // turn cost. Fire-and-forget — a billing error must not block the
     // already-streamed assistant response from finalizing.
-    if (config.billing.enabled && billingOrgId && ownerEmail) {
+    if (config.billing.enabled && billingService && billingOrgId && ownerEmail) {
       const tokensUsedAfter = tokenBudget.getSummary(ownerEmail)?.tokensUsed ?? 0;
       const tokensDelta = Math.max(0, tokensUsedAfter - tokensUsedBefore);
       const usdAmount = (tokensDelta / 1000) * config.billing.usdPer1kTokens;
@@ -1886,6 +1905,11 @@ app.use((req, res, next) => {
 });
 
 async function bootstrapAuthDb(): Promise<void> {
+  if (!sequelizeService) {
+    console.log('[DB] shared-auth disabled by SCOPIC_AUTH_BYPASS=true');
+    return;
+  }
+
   try {
     await sequelizeService.getSequelize().authenticate();
     await sequelizeService.getSequelize().sync();

@@ -120,6 +120,7 @@ function startBackend() {
     cwd: appDir,
     env: childEnv({
       ELECTRON_RUN_AS_NODE: '1',
+      SCOPIC_AUTH_BYPASS: 'true',
       SCOPIC_PORT: '17502',
       SCOPIC_PUBLIC_URL: APP_URL,
       SCOPIC_ALLOWED_ORIGIN: APP_URL,

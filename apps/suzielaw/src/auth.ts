@@ -116,9 +116,21 @@ export function createAuthRouter(opts?: { budget?: TokenBudgetStore }): Router {
   if (opts?.budget) tokenBudget = opts.budget;
   const router: Router = Router();
 
-  // Mount the shared-auth controller under /auth so the URLs the client
-  // already uses (/api/auth/login, /api/auth/logout) keep working.
-  router.use('/auth', createSharedAuthRouter(sharedAuthConfig));
+  if (process.env.SCOPIC_AUTH_BYPASS === 'true') {
+    router.get('/auth/providers', (_req, res) => {
+      res.json({ providers: [] });
+    });
+    router.post('/auth/login', (_req, res) => {
+      res.json({ user: bypassUser() });
+    });
+    router.post('/auth/logout', (_req, res) => {
+      res.json({ ok: true });
+    });
+  } else {
+    // Mount the shared-auth controller under /auth so the URLs the client
+    // already uses (/api/auth/login, /api/auth/logout) keep working.
+    router.use('/auth', createSharedAuthRouter(sharedAuthConfig));
+  }
 
   // Client-facing session endpoint. Returns the same shape the stub used
   // ({ user, tokenBudget }) so the existing useSession() hook is unchanged.

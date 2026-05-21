@@ -1,6 +1,6 @@
 {
   "name": "scopic",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "Scopic legal AI platform built on Team Suzie",
   "license": "MIT",
@@ -27,6 +27,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3",
+      "electron",
       "esbuild",
       "sqlite-vec"
     ]
@@ -92,9 +93,9 @@
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "esbuild": "^0.25.0",
-    "electron": "^42.2.0",
-    "electron-builder": "^26.8.1"
+    "electron": "^41.7.0",
+    "electron-builder": "^26.8.1",
+    "esbuild": "^0.25.0"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
