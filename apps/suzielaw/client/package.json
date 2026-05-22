@@ -10,6 +10,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@teamsuzie/agent-loop": "link:../../../../../../code/teamsuzie_oss/packages/agent-loop",
     "@teamsuzie/citations": "link:../../../../../../code/teamsuzie_oss/packages/citations",
     "@teamsuzie/chats": "link:../../../../../../code/teamsuzie_oss/packages/chats",
     "@teamsuzie/grid-review": "link:../../../../../../code/teamsuzie_oss/packages/grid-review",

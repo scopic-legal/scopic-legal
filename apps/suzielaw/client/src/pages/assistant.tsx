@@ -28,7 +28,7 @@ import { PaywallDialog } from '../components/paywall-dialog.js';
 import { ComposerModelPicker } from '../components/composer-model-picker.js';
 import { useCloudModels } from '../hooks/use-cloud-models.js';
 import { MODELS, MODEL_PROVIDER_ID } from '../data/models.js';
-import { selectedModelPayload } from '../data/ollama.js';
+import { OLLAMA_MODEL_ID, selectedModelPayload } from '../data/ollama.js';
 import type { ModelOption } from '@teamsuzie/ui';
 import {
   TrackedChangesPanel,
@@ -403,8 +403,9 @@ export function AssistantPage({
     );
     const byId = new Map<string, ModelOption>();
     for (const m of MODELS) {
-      if (m.local) continue;
+      if (m.local && m.id === OLLAMA_MODEL_ID) continue;
       const usable =
+        m.local ||
         m.id === defaultModel ||
         (MODEL_PROVIDER_ID[m.id]
           ? keysByProvider.get(MODEL_PROVIDER_ID[m.id]!)?.hasKey ?? false

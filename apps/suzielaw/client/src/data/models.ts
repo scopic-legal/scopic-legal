@@ -1,4 +1,5 @@
 import { DEFAULT_MODELS, type ModelOption } from '@teamsuzie/ui';
+import { LOCAL_MODELS } from '@teamsuzie/agent-loop/local-models';
 import { OLLAMA_BASE_URL, OLLAMA_MODEL_ID } from './ollama.js';
 
 type ScopicModelOption = ModelOption & {
@@ -53,6 +54,19 @@ const OPENAI_MODELS: ScopicModelOption[] = [
   },
 ];
 
+const LOCAL_MODEL_OPTIONS: ScopicModelOption[] = LOCAL_MODELS
+  .filter((model) => model.id !== OLLAMA_MODEL_ID)
+  .map((model) => ({
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    description: model.description,
+    local: true,
+    isLocal: true,
+    resolvedBaseUrl: model.defaultBaseUrl,
+    installUrl: model.installUrl,
+  }));
+
 /**
  * Suzielaw's model picker list. The configured server default (Qwen) is the
  * demo-budget option; the OpenAI / Anthropic models are BYOK — selectable
@@ -66,6 +80,7 @@ const OPENAI_MODELS: ScopicModelOption[] = [
 export const MODELS: ModelOption[] = [
   ...DEFAULT_MODELS.filter((m) => m.id !== 'openai/gpt-5.5'),
   ...OPENAI_MODELS,
+  ...LOCAL_MODEL_OPTIONS,
   OLLAMA_MODEL,
 ];
 

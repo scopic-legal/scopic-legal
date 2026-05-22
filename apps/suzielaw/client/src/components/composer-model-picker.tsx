@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
 import type { ModelOption } from '@teamsuzie/ui';
 import {
   OLLAMA_MODEL_ID,
-  OLLAMA_TAGS_URL,
   SELECTED_OLLAMA_MODEL_KEY,
   readSelectedOllamaModel,
 } from '../data/ollama.js';
+import { useOllamaModels } from '../hooks/use-ollama-models.js';
 
 const OLLAMA_VALUE_PREFIX = 'ollama::';
 
@@ -14,7 +13,7 @@ interface Props {
   models: ModelOption[];
   /** Currently selected model id (the `scopic:selected-model` value). */
   selectedModel: string | undefined;
-  /** Server's configured default model id — used when nothing is selected. */
+  /** Server's configured default model id - used when nothing is selected. */
   defaultModelId?: string;
   /** Persist a non-Ollama model selection (writes `scopic:selected-model`). */
   onSelectModel: (id: string | undefined) => void;
@@ -35,37 +34,13 @@ export function ComposerModelPicker({
   onSelectModel,
   disabled,
 }: Props) {
-  const [ollamaModels, setOllamaModels] = useState<string[]>([]);
-
-  // Best-effort Ollama discovery. Silent on failure — Ollama simply won't
-  // appear as an option if it isn't running.
-  useEffect(() => {
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        const response = await fetch(OLLAMA_TAGS_URL, { signal: controller.signal });
-        if (!response.ok) return;
-        const data = (await response.json()) as {
-          models?: Array<{ name?: string; model?: string }>;
-        };
-        const names = (data.models ?? [])
-          .map((m) => (m.name ?? m.model ?? '').trim())
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        setOllamaModels(names);
-      } catch {
-        // Ollama not running / unreachable — leave the list empty.
-      }
-    })();
-    return () => controller.abort();
-  }, []);
+  const { models: ollamaModels } = useOllamaModels();
 
   const currentValue =
     selectedModel === OLLAMA_MODEL_ID
       ? `${OLLAMA_VALUE_PREFIX}${readSelectedOllamaModel() ?? ''}`
       : selectedModel ?? defaultModelId ?? '';
 
-  // Group cloud models by their provider label for readable optgroups.
   const groups = new Map<string, ModelOption[]>();
   for (const m of models) {
     const label = m.provider || 'Cloud';

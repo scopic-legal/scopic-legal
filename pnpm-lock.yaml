@@ -142,6 +142,9 @@ importers:
 
   apps/suzielaw/client:
     dependencies:
+      '@teamsuzie/agent-loop':
+        specifier: link:../../../../../../code/teamsuzie_oss/packages/agent-loop
+        version: link:../../../../../../code/teamsuzie_oss/packages/agent-loop
       '@teamsuzie/chats':
         specifier: link:../../../../../../code/teamsuzie_oss/packages/chats
         version: link:../../../../../../code/teamsuzie_oss/packages/chats

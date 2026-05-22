@@ -144,6 +144,76 @@ function normalizeOpenAICompatibleBaseUrl(value: string | undefined): string | u
   return value?.trim().replace(/\/+$/, '').replace(/\/v1$/i, '');
 }
 
+function modelNamesFromOllamaTags(data: unknown): string[] {
+  const models = (data as { models?: unknown })?.models;
+  if (!Array.isArray(models)) return [];
+  return models
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return '';
+      const candidate = entry as { name?: unknown; model?: unknown };
+      return typeof candidate.name === 'string'
+        ? candidate.name
+        : typeof candidate.model === 'string'
+          ? candidate.model
+          : '';
+    })
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function modelNamesFromOpenAIModels(data: unknown): string[] {
+  const models = (data as { data?: unknown })?.data;
+  if (!Array.isArray(models)) return [];
+  return models
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return '';
+      const candidate = entry as { id?: unknown; name?: unknown };
+      return typeof candidate.id === 'string'
+        ? candidate.id
+        : typeof candidate.name === 'string'
+          ? candidate.name
+          : '';
+    })
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function uniqueSortedModelNames(names: string[]): string[] {
+  return [...new Set(names)].sort((a, b) => a.localeCompare(b));
+}
+
+async function fetchJsonWithOptionalBearer(
+  url: string,
+  apiKey: string | undefined,
+): Promise<unknown> {
+  const response = await fetch(url, {
+    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(`${url} returned ${response.status}${text ? `: ${text.slice(0, 120)}` : ''}`);
+  }
+  return response.json();
+}
+
+async function fetchOllamaModelNames(
+  baseUrl: string,
+  apiKey: string | undefined,
+): Promise<string[]> {
+  const normalized = normalizeOpenAICompatibleBaseUrl(baseUrl) ?? OLLAMA_DEFAULT_BASE_URL;
+  try {
+    const native = await fetchJsonWithOptionalBearer(`${normalized}/api/tags`, apiKey);
+    const names = modelNamesFromOllamaTags(native);
+    if (names.length > 0) return uniqueSortedModelNames(names);
+  } catch {
+    // Some local gateways expose only the OpenAI-compatible model list.
+  }
+
+  const openai = await fetchJsonWithOptionalBearer(`${normalized}/v1/models`, apiKey);
+  return uniqueSortedModelNames(modelNamesFromOpenAIModels(openai));
+}
+
 let skillState: SkillLoadResult = { skills: [], systemPrompt: '', derivedHosts: [] };
 let mcp: McpManager = { tools: [], status: [], shutdown: async () => {} };
 let templateTools: AnyToolDefinition[] = [];
@@ -499,6 +569,31 @@ app.get('/api/cloud-models/:providerId', requireAuth, async (req, res) => {
       provider: provider.id,
       models: fallback,
       warning: err instanceof Error ? err.message : 'live model list unavailable',
+    });
+  }
+});
+
+app.get('/api/local-models/ollama/models', requireAuth, async (req, res) => {
+  const ownerEmail = getSessionUser(req)?.email;
+  const registry = modelSettings.effectiveRegistry(ownerEmail ?? null);
+  const target = registry[OLLAMA_PROVIDER_ID] ?? config.modelAgents[OLLAMA_PROVIDER_ID];
+  const baseUrl =
+    normalizeOpenAICompatibleBaseUrl(target?.baseUrl) ?? OLLAMA_DEFAULT_BASE_URL;
+
+  try {
+    const models = await fetchOllamaModelNames(baseUrl, target?.apiKey);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+      provider: OLLAMA_PROVIDER_ID,
+      baseUrl,
+      models: models.map((name) => ({ id: name, name })),
+    });
+  } catch (err) {
+    res.status(502).json({
+      error: 'ollama_unreachable',
+      provider: OLLAMA_PROVIDER_ID,
+      baseUrl,
+      message: err instanceof Error ? err.message : 'Unable to list Ollama models',
     });
   }
 });
@@ -1070,8 +1165,21 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     });
     return;
   }
+  if (requestedModelRaw === OLLAMA_PROVIDER_ID && requestedModelProvider !== OLLAMA_PROVIDER_ID) {
+    res.status(400).json({
+      error: 'ollama_model_required',
+      message: 'Select an Ollama model in Settings before sending a message.',
+    });
+    return;
+  }
   const sessionEmailEarly = getSessionUser(req)?.email;
-  if (requestedModelRaw && requestedModelRaw !== config.agent.model && !isOllamaRequest) {
+  const isKnownLocalModel = modelSettings.knownModelIds().has(requestedModelRaw);
+  if (
+    requestedModelRaw &&
+    requestedModelRaw !== config.agent.model &&
+    !isOllamaRequest &&
+    !isKnownLocalModel
+  ) {
     const provider = providerForModel(requestedModelRaw);
     const hasUserKey = !!(
       provider &&

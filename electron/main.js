@@ -187,12 +187,14 @@ async function waitForReady() {
 }
 
 function createWindow() {
+  const iconName = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 600,
     title: 'Scopic',
+    icon: appPath('build', iconName),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,

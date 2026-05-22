@@ -1,6 +1,6 @@
 {
   "name": "scopic",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "private": true,
   "description": "Scopic legal AI platform built on Team Suzie",
   "license": "MIT",
@@ -36,6 +36,7 @@
     "appId": "com.scopic.app",
     "productName": "Scopic",
     "asar": false,
+    "icon": "build/icon.png",
     "directories": {
       "output": "dist-electron"
     },
@@ -59,6 +60,7 @@
       "category": "public.app-category.productivity"
     },
     "win": {
+      "icon": "build/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}",
       "target": [
         {
@@ -70,6 +72,7 @@
       ]
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "AppImage",
@@ -79,7 +82,13 @@
         }
       ]
     },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
     "files": [
+      "build/icon.*",
       "electron/**/*",
       "apps/suzielaw/dist/server.mjs",
       "apps/suzielaw/client/dist/**/*",

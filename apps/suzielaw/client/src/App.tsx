@@ -145,24 +145,30 @@ function InvertedThemeToggle() {
 }
 
 function Wordmark({ title }: { title: string }) {
-  // Bauhaus two-line wordmark: "SUZIE" on top, a hairline rule, then the
-  // category ("LAW") below. Geometric, confident, no decorative flourish.
   const parts = title.toUpperCase().split(' ');
   const head = parts.slice(0, parts.length - 1).join(' ') || parts[0] || 'SUZIE';
   const tail = parts.length > 1 ? parts[parts.length - 1] : '';
   return (
-    <div className="flex flex-col leading-none text-background">
-      <span className="font-display text-[1.05rem] font-bold tracking-[-0.02em]">
-        {head}
-      </span>
-      {tail && (
-        <>
-          <span className="my-1.5 inline-block h-px w-7 bg-background/60" aria-hidden />
-          <span className="font-display text-[1.05rem] font-bold tracking-[-0.02em]">
-            {tail}
-          </span>
-        </>
-      )}
+    <div className="flex items-center gap-3 text-background">
+      <img
+        src="/logos/scopic-white.png"
+        alt=""
+        className="size-9 shrink-0 object-contain"
+        aria-hidden="true"
+      />
+      <div className="flex flex-col leading-none">
+        <span className="font-display text-[1.05rem] font-bold tracking-[-0.02em]">
+          {head}
+        </span>
+        {tail && (
+          <>
+            <span className="my-1.5 inline-block h-px w-7 bg-background/60" aria-hidden />
+            <span className="font-display text-[1.05rem] font-bold tracking-[-0.02em]">
+              {tail}
+            </span>
+          </>
+        )}
+      </div>
     </div>
   );
 }

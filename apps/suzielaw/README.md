@@ -30,6 +30,8 @@ Set in `.env`. Same shape as upstream `starter-chat`'s env, with `STARTER_CHAT_`
 | `SCOPIC_AGENT_NAME` | `Counsel` | Assistant display name |
 | `SCOPIC_VECTOR_DB_BASE_URL` | `http://localhost:3006` | Where the `vector_search` tool POSTs |
 | `SCOPIC_TOOL_MAX_ITERATIONS` | `100` | Cap on tool-use loop turns |
+| `SCOPIC_LOCAL_QWEN_BASE_URL` / `SCOPIC_LOCAL_GEMMA_BASE_URL` | `http://localhost:8801` / `http://localhost:8802` | OpenAI-compatible local model endpoints shown in Settings |
+| `SCOPIC_OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint used for model discovery and chat routing |
 
 Skills, MCP, and the http-allow-list work exactly as upstream — see the upstream README. The `.env.example` lists all of them with comments.
 

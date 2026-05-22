@@ -9,12 +9,12 @@ import {
 import { MODELS, MODEL_PROVIDER_ID } from '../data/models.js';
 import {
   OLLAMA_MODEL_ID,
-  OLLAMA_TAGS_URL,
   SELECTED_OLLAMA_MODEL_KEY,
 } from '../data/ollama.js';
 import { useModelSettings } from '../hooks/use-model-settings.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { useCloudModels } from '../hooks/use-cloud-models.js';
+import { useOllamaModels } from '../hooks/use-ollama-models.js';
 import {
   ProviderKeysCard,
   type ProviderDisplay,
@@ -32,13 +32,11 @@ interface Props {
 }
 
 function OllamaModelSelect({ active }: { active: boolean }) {
-  const [models, setModels] = useState<string[]>([]);
+  const { models, baseUrl, loading, error } = useOllamaModels(active);
   const [selected, setSelected] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
     return window.localStorage.getItem(SELECTED_OLLAMA_MODEL_KEY) ?? '';
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   function persistSelection(model: string) {
     setSelected(model);
@@ -52,40 +50,10 @@ function OllamaModelSelect({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (!active) return;
-
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    void (async () => {
-      try {
-        const response = await fetch(OLLAMA_TAGS_URL, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error(`Ollama tags failed (${response.status})`);
-        const data = (await response.json()) as {
-          models?: Array<{ name?: string; model?: string }>;
-        };
-        const names = (data.models ?? [])
-          .map((model) => model.name ?? model.model ?? '')
-          .map((name) => name.trim())
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        setModels(names);
-        if (names.length > 0 && !names.includes(selected)) {
-          persistSelection(names[0]!);
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setModels([]);
-          setError(OLLAMA_NOT_RUNNING);
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    })();
-
-    return () => controller.abort();
-  }, [active, selected]);
+    if (models.length > 0 && !models.includes(selected)) {
+      persistSelection(models[0]!);
+    }
+  }, [active, models, selected]);
 
   if (!active) return null;
 
@@ -97,6 +65,11 @@ function OllamaModelSelect({ active }: { active: boolean }) {
       >
         Ollama model
       </label>
+      {baseUrl && (
+        <p className="mt-1 font-mono text-[10px] text-foreground/45">
+          {baseUrl}
+        </p>
+      )}
       <select
         id="ollama-model-select"
         value={selected}
@@ -115,8 +88,11 @@ function OllamaModelSelect({ active }: { active: boolean }) {
         )}
       </select>
       {error && (
-        <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
-          {error}
+        <p
+          className="mt-2 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive"
+          title={error}
+        >
+          {OLLAMA_NOT_RUNNING}
         </p>
       )}
     </div>

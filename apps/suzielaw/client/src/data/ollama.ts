@@ -1,7 +1,7 @@
 export const OLLAMA_MODEL_ID = 'ollama';
 export const OLLAMA_PROVIDER_ID = 'ollama';
 export const OLLAMA_BASE_URL = 'http://localhost:11434';
-export const OLLAMA_TAGS_URL = 'http://localhost:11434/api/tags';
+export const OLLAMA_MODELS_URL = '/api/local-models/ollama/models';
 export const SELECTED_OLLAMA_MODEL_KEY = 'scopic:ollama-model';
 
 export function readSelectedOllamaModel(): string | undefined {
