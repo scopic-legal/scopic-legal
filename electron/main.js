@@ -66,6 +66,7 @@ function childEnv(extra = {}) {
     ...process.env,
     NODE_ENV: 'development',
     SCOPIC_DB_PATH: path.join(userData, 'scopic.db'),
+    SCOPIC_FILES_DIR: path.join(userData, 'files'),
     ...extra,
   };
 }

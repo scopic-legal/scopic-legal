@@ -124,7 +124,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');
 
 const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
-const fileStore = new InMemoryFileStore();
+const fileStore = new InMemoryFileStore({ dataDir: config.files.dir });
 const docStore = new InMemoryDocumentStore();
 const tokenBudget = new TokenBudgetStore(db, config.tokenBudget.defaultLimit);
 const OLLAMA_PROVIDER_ID = 'ollama';

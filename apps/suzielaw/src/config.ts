@@ -210,6 +210,14 @@ export const config = {
   files: {
     /** Per-file size cap on uploads. Default 25MB. */
     maxUploadBytes: parseInt(process.env.SCOPIC_MAX_UPLOAD_BYTES || `${25 * 1024 * 1024}`, 10),
+    /**
+     * Directory used to persist uploaded file bytes (matter docs, paperclip
+     * uploads, etc.). Defaults to `./data/files` relative to the server cwd.
+     * In the packaged Electron app this is overridden to a userData path so
+     * the bytes survive install/update — otherwise the data directory lives
+     * inside the install dir and gets wiped by the installer.
+     */
+    dir: process.env.SCOPIC_FILES_DIR || './data/files',
   },
   markitdown: {
     /** markitdown-agent base URL. When set, the agent gets convert_to_markdown + export_to_docx. */
