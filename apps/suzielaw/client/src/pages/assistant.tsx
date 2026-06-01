@@ -784,14 +784,29 @@ export function AssistantPage({
               const result = payload.result as {
                 _doc_state?: unknown;
                 download_url?: unknown;
+                downloadUrl?: unknown;
                 filename?: unknown;
+                download_filename?: unknown;
+                downloadFilename?: unknown;
               };
               const ds = result._doc_state;
               if (ds && typeof ds === 'object') {
                 const obj = ds as { doc_id?: string; title?: string; markdown?: string };
                 if (typeof obj.doc_id === 'string' && typeof obj.markdown === 'string') {
-                  const docxUrl = typeof result.download_url === 'string' ? result.download_url : undefined;
-                  const docxName = typeof result.filename === 'string' ? result.filename : undefined;
+                  const docxUrl =
+                    typeof result.download_url === 'string'
+                      ? result.download_url
+                      : typeof result.downloadUrl === 'string'
+                        ? result.downloadUrl
+                        : undefined;
+                  const docxName =
+                    typeof result.filename === 'string'
+                      ? result.filename
+                      : typeof result.download_filename === 'string'
+                        ? result.download_filename
+                        : typeof result.downloadFilename === 'string'
+                          ? result.downloadFilename
+                          : undefined;
                   setActiveArtifact((prev) => {
                     const carry = prev && prev.docId === obj.doc_id ? prev : null;
                     return {

@@ -203,6 +203,7 @@ export function buildGenerateDocxTools(
       return {
         download_url: downloadUrl,
         download_file_id: fileId,
+        filename,
         download_filename: filename,
         section_count: sections.length,
         version_id: versionId,
