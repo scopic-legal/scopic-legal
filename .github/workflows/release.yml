@@ -110,8 +110,10 @@ jobs:
               --notes "Auto-update release. Download the Windows installer asset named Scopic-Setup-$($tag.TrimStart('v')).exe."
           }
 
-      # electron-builder reads GH_TOKEN to upload artifacts to the release that
-      # was created by the tag push. It produces:
+      # electron-builder packages the installer and update metadata. The
+      # app-update.yml feed config is copied via build.extraResources so it is
+      # still present when we use --publish never and upload assets manually.
+      # It produces:
       #   • Scopic Setup <version>.exe  — the NSIS installer users download
       #   • latest.yml                  — metadata read by electron-updater
       - name: Package and publish Electron installer
@@ -130,6 +132,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEBUG: electron-builder
+
+      - name: Verify packaged updater config
+        if: runner.os == 'Windows'
+        working-directory: scopic
+        shell: pwsh
+        run: |
+          $config = Get-Item "dist-electron\win-unpacked\resources\app-update.yml" -ErrorAction SilentlyContinue
+          if (-not $config) {
+            Write-Host "::error::resources\app-update.yml is missing from the packaged app; auto-update will not know where to check."
+            Get-ChildItem "dist-electron\win-unpacked\resources" -Force | ForEach-Object { Write-Host "resource: $($_.Name)" }
+            exit 1
+          }
+          Write-Host "Found updater config at $($config.FullName)"
 
       - name: Upload installer assets to GitHub release
         working-directory: scopic

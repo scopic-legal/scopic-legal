@@ -1,9 +1,20 @@
 const { app, dialog } = require('electron');
+const fs = require('node:fs');
+const path = require('node:path');
 const { autoUpdater } = require('electron-updater');
 
 let promptedForUpdate = false;
+let checkingForUpdate = false;
 let downloadingUpdate = false;
 let updateErrorShown = false;
+let updateReady = false;
+
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const UPDATE_FEED = {
+  provider: 'github',
+  owner: 'ezazahamad2003',
+  repo: 'scopic-legal',
+};
 
 function setWindowProgress(window, value) {
   if (window && !window.isDestroyed()) {
@@ -23,32 +34,18 @@ function initAutoUpdater(mainWindow) {
     return;
   }
 
-  autoUpdater.autoDownload = false;
+  configureUpdateFeed();
+  autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('checking-for-update', () => {
     console.log('[updates] Checking for updates...');
   });
-  autoUpdater.on('update-available', async (info) => {
+  autoUpdater.on('update-available', (info) => {
     console.log('[updates] Update available:', info.version);
-    if (promptedForUpdate || downloadingUpdate) return;
-    promptedForUpdate = true;
-    const result = await dialog.showMessageBox({
-      type: 'info',
-      buttons: ['Download update', 'Later'],
-      defaultId: 0,
-      cancelId: 1,
-      message: `Scopic ${info.version} is available.`,
-      detail: 'Download it now? You can keep working while the update downloads.',
-    });
-    if (result.response === 0) {
-      downloadingUpdate = true;
-      updateErrorShown = false;
-      setWindowProgress(mainWindow, 2);
-      autoUpdater.downloadUpdate().catch((error) => {
-        handleUpdateError(error);
-      });
-    }
+    downloadingUpdate = true;
+    updateErrorShown = false;
+    setWindowProgress(mainWindow, 2);
   });
   autoUpdater.on('update-not-available', () => {
     console.log('[updates] No update available.');
@@ -59,8 +56,11 @@ function initAutoUpdater(mainWindow) {
   });
   autoUpdater.on('update-downloaded', async (info) => {
     downloadingUpdate = false;
+    updateReady = true;
     setWindowProgress(mainWindow, -1);
     console.log('[updates] Update downloaded; it will install on next restart:', info.version);
+    if (promptedForUpdate) return;
+    promptedForUpdate = true;
     const result = await dialog.showMessageBox({
       type: 'info',
       buttons: ['Restart now', 'Later'],
@@ -77,22 +77,43 @@ function initAutoUpdater(mainWindow) {
     handleUpdateError(error);
   });
 
-  autoUpdater.checkForUpdates().catch((error) => {
-    console.error('[updates] Check failed:', error);
-  });
+  checkForUpdatesSafely();
+  setInterval(checkForUpdatesSafely, UPDATE_CHECK_INTERVAL_MS);
+
+  async function checkForUpdatesSafely() {
+    if (checkingForUpdate || downloadingUpdate || updateReady) return;
+    checkingForUpdate = true;
+    try {
+      await autoUpdater.checkForUpdates();
+    } catch (error) {
+      console.error('[updates] Check failed:', error);
+    } finally {
+      checkingForUpdate = false;
+    }
+  }
 
   function handleUpdateError(error) {
+    const wasDownloadingUpdate = downloadingUpdate;
     downloadingUpdate = false;
     setWindowProgress(mainWindow, -1);
     console.error('[updates] Error:', error);
-    if (!promptedForUpdate || updateErrorShown) return;
+    if (!wasDownloadingUpdate || updateErrorShown) return;
     updateErrorShown = true;
-    promptedForUpdate = false;
     dialog.showErrorBox(
       'Scopic update failed',
       `The update could not be downloaded. Please try again later or download the installer from GitHub.\n\n${updateErrorMessage(error)}`,
     );
   }
+}
+
+function configureUpdateFeed() {
+  const appUpdateConfigPath = path.join(process.resourcesPath, 'app-update.yml');
+  if (fs.existsSync(appUpdateConfigPath)) return;
+
+  console.warn(
+    `[updates] ${appUpdateConfigPath} is missing; using built-in GitHub update feed.`,
+  );
+  autoUpdater.setFeedURL(UPDATE_FEED);
 }
 
 module.exports = { initAutoUpdater };

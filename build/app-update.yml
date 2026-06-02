@@ -1,0 +1,4 @@
+provider: github
+owner: ezazahamad2003
+repo: scopic-legal
+updaterCacheDirName: scopic-updater
