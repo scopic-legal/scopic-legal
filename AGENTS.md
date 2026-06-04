@@ -78,6 +78,13 @@ file, ask: *should this be a `@teamsuzie/ui` export?* — usually it should.
 - If a change touches auth, file uploads, the document store, or chat
   routing, treat it as security-sensitive.
 
+## Release And Pushes
+
+- When preparing a new release or push, keep application auto-update behavior
+  in scope. A newly published release should be discoverable by the installed
+  app and trigger the intended update path; do not consider release work
+  complete until that path is verified or the gap is explicitly documented.
+
 ## Common Commands
 
 ```bash

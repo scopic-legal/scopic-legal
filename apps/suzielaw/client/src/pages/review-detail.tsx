@@ -36,6 +36,7 @@ import { useDocSidePanel } from '../components/document-side-panel.js';
 import { useMatter, type MatterDocument } from '../hooks/use-matter.js';
 import { useReview, type CellFormat } from '../hooks/use-review.js';
 import { useReviewChats } from '../hooks/use-review-chats.js';
+import { selectedModelPayload } from '../data/ollama.js';
 
 /**
  * Column preset registry — kept (empty) so a future host can plug
@@ -46,6 +47,15 @@ import { useReviewChats } from '../hooks/use-review-chats.js';
  * from `data/legal-presets.ts` is no longer registered.
  */
 const columnPresets = new ColumnPresetRegistry();
+const SELECTED_MODEL_KEY = 'scopic:selected-model';
+
+function selectedReviewModelPayload(): {
+  model?: string;
+  modelProvider?: string;
+} {
+  if (typeof window === 'undefined') return {};
+  return selectedModelPayload(window.localStorage.getItem(SELECTED_MODEL_KEY) || undefined);
+}
 
 function pageHintFromLocator(locator: string | undefined): number | undefined {
   if (!locator) return undefined;
@@ -78,6 +88,7 @@ async function draftColumnPromptFromServer({
       // (the form default). The editor independently enforces this on
       // the response side too.
       formatLocked: formatDirty,
+      ...selectedReviewModelPayload(),
     }),
     signal,
   });

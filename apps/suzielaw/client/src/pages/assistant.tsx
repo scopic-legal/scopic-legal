@@ -241,7 +241,7 @@ function Greeting({
 }: {
   name: string;
   prompts: PromptIdea[];
-  onSelect: (prompt: string) => void;
+  onSelect: (prompt: PromptIdea) => void;
 }) {
   const salutation = useMemo(() => greetingFor(new Date()), []);
   const dateLabel = useMemo(() => {
@@ -282,7 +282,7 @@ function Greeting({
             <button
               key={card.title}
               type="button"
-              onClick={() => onSelect(card.prompt)}
+              onClick={() => onSelect(card)}
               className={cn(
                 'group relative flex flex-col items-start gap-2 border-b border-foreground/15 px-6 py-7 text-left transition-colors',
                 'hover:bg-foreground/[0.025]',
@@ -488,6 +488,16 @@ export function AssistantPage({
       method: 'DELETE',
       credentials: 'include',
     }).catch(() => undefined);
+  }
+
+  function handleStarterSelect(prompt: PromptIdea) {
+    setInput(prompt.prompt);
+    setPrefillLabel(prompt.title);
+    setError('');
+    if (prompt.requiresAttachment) fileInputRef.current?.click();
+    window.setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   }
 
   useEffect(() => {
@@ -1006,7 +1016,7 @@ export function AssistantPage({
           <Greeting
             name={displayName}
             prompts={PROMPTS}
-            onSelect={(prompt) => void sendMessage(prompt)}
+            onSelect={handleStarterSelect}
           />
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-8">

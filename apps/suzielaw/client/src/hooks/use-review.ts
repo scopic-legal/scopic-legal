@@ -5,8 +5,19 @@ import type {
   ReviewDocument,
   ReviewSnapshot,
 } from '@teamsuzie/grid-review/browser';
+import { selectedModelPayload } from '../data/ollama.js';
 
 export type { CellFormat, ReviewColumn, ReviewDocument, ReviewSnapshot };
+
+const SELECTED_MODEL_KEY = 'scopic:selected-model';
+
+function selectedReviewModelPayload(): {
+  model?: string;
+  modelProvider?: string;
+} {
+  if (typeof window === 'undefined') return {};
+  return selectedModelPayload(window.localStorage.getItem(SELECTED_MODEL_KEY) || undefined);
+}
 
 export interface AddColumnInput {
   title: string;
@@ -326,7 +337,9 @@ export function useReview(
     try {
       const response = await fetch(`${baseUrl}/run`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify(selectedReviewModelPayload()),
       });
       await drainSse(response, 'pending');
     } catch (err) {
@@ -348,7 +361,11 @@ export function useReview(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ columnId, reviewDocumentId }),
+        body: JSON.stringify({
+          columnId,
+          reviewDocumentId,
+          ...selectedReviewModelPayload(),
+        }),
       });
       await drainSse(response, 'single');
     },

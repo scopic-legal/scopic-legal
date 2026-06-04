@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
+import type { Request } from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -96,7 +97,7 @@ import {
   resolveWorkflowRole,
 } from './sharing.js';
 import { createReviewsRouter, ReviewsStore } from '@teamsuzie/grid-review';
-import { buildReviewRunAdapter } from './reviews-glue.js';
+import { buildReviewRunAdapter, type ReviewLlmTarget } from './reviews-glue.js';
 import { ChatsStore, createChatsRouter } from '@teamsuzie/chats';
 import { WorkflowsStore, createWorkflowsRouter } from '@teamsuzie/workflows';
 import { seedAndMigrateWorkflows } from './seed-workflows.js';
@@ -706,6 +707,105 @@ app.use(
     documentVersions,
   }),
 );
+
+function providerTarget(
+  provider: (typeof CLOUD_PROVIDERS)[number],
+  apiKey: string,
+  uiModelId: string,
+): ReviewLlmTarget {
+  return {
+    baseUrl: provider.baseUrl,
+    apiKey,
+    model: wireModelIdFor(uiModelId),
+    extraBody: extraBodyForProvider(provider),
+    meterTokens: false,
+  };
+}
+
+function firstKeyedProviderTarget(ownerEmail: string): ReviewLlmTarget | null {
+  for (const provider of CLOUD_PROVIDERS) {
+    const apiKey = modelSettings.getProviderKey(ownerEmail, provider.id);
+    const uiModelId = provider.modelIds[0];
+    if (apiKey && uiModelId) {
+      return providerTarget(provider, apiKey, uiModelId);
+    }
+  }
+  return null;
+}
+
+function resolveReviewLlmTarget(input: {
+  request: Request | undefined;
+  modelId: string;
+  modelProvider?: string;
+}): ReviewLlmTarget {
+  const ownerEmail = input.request ? getSessionUser(input.request)?.email : null;
+  const requestedModel = input.modelId || config.agent.simpleModel;
+
+  if (input.modelProvider === OLLAMA_PROVIDER_ID && requestedModel) {
+    const registry = modelSettings.effectiveRegistry(ownerEmail ?? null);
+    const target = registry[OLLAMA_PROVIDER_ID] ?? config.modelAgents[OLLAMA_PROVIDER_ID];
+    return {
+      baseUrl:
+        normalizeOpenAICompatibleBaseUrl(target?.baseUrl) ??
+        OLLAMA_DEFAULT_BASE_URL,
+      apiKey: target?.apiKey,
+      model: requestedModel,
+      extraBody: target?.extraBody,
+      meterTokens: false,
+    };
+  }
+
+  const cloudProvider = providerForModel(requestedModel);
+  if (cloudProvider) {
+    if (ownerEmail) {
+      const apiKey = modelSettings.getProviderKey(ownerEmail, cloudProvider.id);
+      if (apiKey) {
+        return providerTarget(cloudProvider, apiKey, requestedModel);
+      }
+      const fallback = firstKeyedProviderTarget(ownerEmail);
+      if (fallback) return fallback;
+    }
+    return {
+      baseUrl: config.agent.baseUrl,
+      apiKey: config.agent.apiKey,
+      model: config.agent.simpleModel,
+      extraBody: config.agent.extraBody,
+      meterTokens: true,
+    };
+  }
+
+  const localTarget = resolveAgentTarget(
+    requestedModel,
+    modelSettings.effectiveRegistry(ownerEmail ?? null),
+    config.agent,
+  );
+  const isLocalOverride = modelSettings.knownModelIds().has(requestedModel);
+  if (isLocalOverride) {
+    return {
+      baseUrl:
+        normalizeOpenAICompatibleBaseUrl(localTarget.baseUrl) ??
+        localTarget.baseUrl,
+      apiKey: localTarget.apiKey,
+      model: localTarget.model,
+      extraBody: localTarget.extraBody,
+      meterTokens: false,
+    };
+  }
+
+  if (!config.agent.apiKey && ownerEmail) {
+    const fallback = firstKeyedProviderTarget(ownerEmail);
+    if (fallback) return fallback;
+  }
+
+  return {
+    baseUrl: config.agent.baseUrl,
+    apiKey: config.agent.apiKey,
+    model: requestedModel,
+    extraBody: config.agent.extraBody,
+    meterTokens: true,
+  };
+}
+
 const reviewRunAdapter = buildReviewRunAdapter({
   fileStore,
   rag: matterRag,
@@ -724,6 +824,7 @@ const reviewRunAdapter = buildReviewRunAdapter({
   extraBody: config.agent.extraBody,
   tokenBudget,
   fallbackTokensPerCall: config.tokenBudget.fallbackTokensPerCall,
+  resolveTarget: resolveReviewLlmTarget,
 });
 app.use(
   '/api/matters/:matterId/chats',
@@ -2048,11 +2149,22 @@ app.post('/api/reviews/column/draft-prompt', requireAuth, async (req, res) => {
     : undefined;
   const formatLocked = req.body?.formatLocked === true;
   try {
+    const target = resolveReviewLlmTarget({
+      request: req,
+      modelId:
+        typeof req.body?.model === 'string' && req.body.model.trim()
+          ? req.body.model.trim()
+          : config.agent.simpleModel,
+      modelProvider:
+        typeof req.body?.modelProvider === 'string'
+          ? req.body.modelProvider.trim()
+          : undefined,
+    });
     const draft = await draftColumnPrompt(title, {
-      baseUrl: config.agent.baseUrl,
-      apiKey: config.agent.apiKey,
-      model: config.agent.simpleModel,
-      extraBody: config.agent.extraBody,
+      baseUrl: target.baseUrl,
+      apiKey: target.apiKey,
+      model: target.model,
+      extraBody: target.extraBody,
       formatHint,
       formatLocked,
     });

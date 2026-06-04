@@ -15,17 +15,28 @@ interface UseProviderKeys {
   clearKey: (providerId: string) => Promise<void>;
 }
 
+interface UseProviderKeysOptions {
+  enabled?: boolean;
+}
+
 /**
  * Drives the per-(user, provider) BYOK key UI. Talks to
  * `/api/model-settings/providers`. Keys are write-only — the server
  * never echoes them back, the hook only knows whether one is set.
  */
-export function useProviderKeys(): UseProviderKeys {
+export function useProviderKeys(options: UseProviderKeysOptions = {}): UseProviderKeys {
+  const enabled = options.enabled ?? true;
   const [providers, setProviders] = useState<ProviderKeyPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
+    if (!enabled) {
+      setProviders([]);
+      setLoading(false);
+      setError('');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -40,7 +51,7 @@ export function useProviderKeys(): UseProviderKeys {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     void refresh();

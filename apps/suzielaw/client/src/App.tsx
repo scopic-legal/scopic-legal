@@ -19,9 +19,9 @@ import {
   useTheme,
 } from '@teamsuzie/ui';
 import { Protected } from './components/protected.js';
-import { useAssistantChats } from './hooks/use-assistant-chats.js';
 import { useBilling } from './hooks/use-billing.js';
 import { useSession } from './hooks/use-session.js';
+import { useProviderKeys } from './hooks/use-provider-keys.js';
 import { AssistantPage } from './pages/assistant.js';
 import { HistoryPage } from './pages/history.js';
 import { KnowledgeBasePage } from './pages/knowledge-base.js';
@@ -105,18 +105,17 @@ function AssistantNavLink({
   );
 }
 
-/**
- * Bauhaus theme toggle — inline because the sidebar is inverted and the
- * generic ThemeToggle component is styled for non-inverted surfaces. Three
- * letters, hairline border, saffron active fill.
- */
 function InvertedThemeToggle() {
   const [theme, setTheme] = useTheme();
-  const options: { value: 'light' | 'system' | 'dark'; label: string }[] = [
-    { value: 'light', label: 'L' },
-    { value: 'system', label: 'S' },
-    { value: 'dark', label: 'D' },
+  const options = [
+    { value: 'light' as const, label: 'L', title: 'Light theme' },
+    { value: 'dark' as const, label: 'D', title: 'Dark theme' },
   ];
+
+  useEffect(() => {
+    if (theme === 'system') setTheme('light');
+  }, [theme, setTheme]);
+
   return (
     <div className="inline-flex items-center border border-background/20" role="radiogroup" aria-label="Color theme">
       {options.map((opt) => {
@@ -128,7 +127,7 @@ function InvertedThemeToggle() {
             role="radio"
             aria-checked={active}
             onClick={() => setTheme(opt.value)}
-            title={`${opt.value[0].toUpperCase() + opt.value.slice(1)} theme`}
+            title={opt.title}
             className={cn(
               'h-5 w-6 font-mono text-[10px] leading-none transition-colors',
               active
@@ -179,6 +178,7 @@ export default function App() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const session = useSession();
+  const providerKeys = useProviderKeys({ enabled: !!session.user });
   const billing = useBilling();
   const navigate = useNavigate();
   const { personas, loading: personasLoading } = usePersonas();
@@ -188,15 +188,7 @@ export default function App() {
     () => personaList.find((p) => p.id === selectedPersonaId) ?? null,
     [personaList, selectedPersonaId],
   );
-  // The "Assistant" sidebar link resumes the most recent chat when one
-  // exists — clicking it shouldn't blow away the chat the user was in.
-  // The "New chat" button on the Assistant page navigates to bare `/` to
-  // get a fresh greeting, which then creates a chat on first send.
-  const assistantChats = useAssistantChats();
-  const mostRecentChatId = assistantChats.chats[0]?.id;
-  const assistantTo = mostRecentChatId
-    ? `/c/${encodeURIComponent(mostRecentChatId)}`
-    : '/';
+  const assistantTo = '/';
   const nav = useMemo(() => {
     const head: NavItem[] = [
       // `end: false` here so the link stays highlighted on `/c/*` too —
@@ -243,9 +235,12 @@ export default function App() {
   const title = health?.title || 'Scopic';
   const agentName = health?.agent?.name || 'Counsel';
   const agentReachable = health?.agent?.reachable ?? false;
-  const statusState: 'online' | 'offline' | 'pending' = !healthLoaded
+  const hasProviderKey = providerKeys.providers.some((p) => p.hasKey);
+  const connectionLoaded = healthLoaded && (!session.user || !providerKeys.loading);
+  const agentConnected = agentReachable || hasProviderKey;
+  const statusState: 'online' | 'offline' | 'pending' = !connectionLoaded
     ? 'pending'
-    : agentReachable
+    : agentConnected
       ? 'online'
       : 'offline';
 

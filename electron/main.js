@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require('electron');
+const { app, BrowserWindow, Menu, dialog } = require('electron');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -196,6 +196,7 @@ function createWindow() {
     minHeight: 600,
     title: 'Scopic',
     icon: appPath('build', iconName),
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -207,6 +208,9 @@ function createWindow() {
     event.preventDefault();
     mainWindow?.setTitle('Scopic');
   });
+  if (!isDevelopment()) {
+    mainWindow.setMenu(null);
+  }
   mainWindow.loadURL(APP_URL);
 }
 
@@ -225,6 +229,9 @@ function stopChild(child) {
 app.whenReady().then(async () => {
   try {
     log(`app ready: cwd=${process.cwd()} appPath=${app.getAppPath()} packaged=${app.isPackaged}`);
+    if (!isDevelopment()) {
+      Menu.setApplicationMenu(null);
+    }
     startBackend();
     startFrontend();
     await waitForReady();

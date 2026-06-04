@@ -44,6 +44,19 @@ export interface BuildReviewRunAdapterOptions {
   topK?: number;
   tokenBudget?: TokenBudgetStore;
   fallbackTokensPerCall?: number;
+  resolveTarget?: (input: {
+    request: Request | undefined;
+    modelId: string;
+    modelProvider?: string;
+  }) => ReviewLlmTarget;
+}
+
+export interface ReviewLlmTarget {
+  baseUrl: string;
+  apiKey: string | undefined;
+  model: string;
+  extraBody?: Record<string, unknown>;
+  meterTokens?: boolean;
 }
 
 /**
@@ -61,24 +74,41 @@ export function buildReviewRunAdapter(
   const topK = opts.topK ?? 6;
 
   return async function* runReviewCell({ request, workspaceId, document, column, signal }) {
-    const ownerEmail = request ? getSessionUser(request as Request)?.email : null;
-    const meteredFetch =
+    const expressRequest = request as Request | undefined;
+    const body = expressRequest?.body as Record<string, unknown> | undefined;
+    const requestedModel =
+      typeof body?.model === 'string' ? body.model.trim() : '';
+    const requestedModelProvider =
+      typeof body?.modelProvider === 'string' ? body.modelProvider.trim() : '';
+    const cellTarget = resolveTarget(opts, expressRequest, {
+      modelId: requestedModel || opts.model,
+      modelProvider: requestedModelProvider || undefined,
+    });
+    const hydeTarget = resolveTarget(opts, expressRequest, {
+      modelId: requestedModel || opts.hydeModel,
+      modelProvider: requestedModel
+        ? requestedModelProvider || undefined
+        : undefined,
+    });
+
+    const ownerEmail = expressRequest ? getSessionUser(expressRequest)?.email : null;
+    const cellFetch =
       opts.tokenBudget && ownerEmail
         ? createTokenMeteredFetch({
             budget: opts.tokenBudget,
             ownerEmail,
             source: 'review-cell',
-            model: opts.model,
-            enabled: true,
+            model: cellTarget.model,
+            enabled: cellTarget.meterTokens !== false,
             fallbackTokens: opts.fallbackTokensPerCall ?? 0,
           })
         : fetch;
     const llm = makeStreamCompletion({
-      baseUrl: opts.agentBaseUrl,
-      apiKey: opts.agentApiKey,
-      model: opts.model,
-      extraBody: opts.extraBody,
-      fetchImpl: meteredFetch,
+      baseUrl: cellTarget.baseUrl,
+      apiKey: cellTarget.apiKey,
+      model: cellTarget.model,
+      extraBody: cellTarget.extraBody,
+      fetchImpl: cellFetch,
     });
     const hydeFetch =
       opts.tokenBudget && ownerEmail
@@ -86,8 +116,8 @@ export function buildReviewRunAdapter(
             budget: opts.tokenBudget,
             ownerEmail,
             source: 'review-hyde',
-            model: opts.hydeModel,
-            enabled: true,
+            model: hydeTarget.model,
+            enabled: hydeTarget.meterTokens !== false,
             fallbackTokens: opts.fallbackTokensPerCall ?? 0,
           })
         : fetch;
@@ -111,10 +141,10 @@ export function buildReviewRunAdapter(
             column.prompt,
             column.format,
             {
-              baseUrl: opts.agentBaseUrl,
-              apiKey: opts.agentApiKey,
-              model: opts.hydeModel,
-              extraBody: opts.extraBody,
+              baseUrl: hydeTarget.baseUrl,
+              apiKey: hydeTarget.apiKey,
+              model: hydeTarget.model,
+              extraBody: hydeTarget.extraBody,
               fetchImpl: hydeFetch,
             },
           );
@@ -213,6 +243,21 @@ export function buildReviewRunAdapter(
   };
 }
 
+function resolveTarget(
+  opts: BuildReviewRunAdapterOptions,
+  request: Request | undefined,
+  input: { modelId: string; modelProvider?: string },
+): ReviewLlmTarget {
+  return opts.resolveTarget
+    ? opts.resolveTarget({ request, ...input })
+    : {
+        baseUrl: opts.agentBaseUrl,
+        apiKey: opts.agentApiKey,
+        model: input.modelId,
+        extraBody: opts.extraBody,
+      };
+}
+
 /**
  * Build a `PreparedDocument` whose `marked` content is the retrieved
  * chunks, each labeled "[Excerpt N]" so the model treats them as a
@@ -258,6 +303,11 @@ interface OpenAiChunk {
  */
 function makeStreamCompletion(opts: StreamCompletionOptions): LlmStream {
   return async function* ({ messages, signal }) {
+    if (!opts.apiKey && requiresApiKey(opts.baseUrl)) {
+      throw new Error(
+        'Counsel needs an API key to run this review. Add a provider key in Settings, then pick that model before running Tabular Review.',
+      );
+    }
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -308,4 +358,13 @@ function makeStreamCompletion(opts: StreamCompletionOptions): LlmStream {
       }
     }
   };
+}
+
+function requiresApiKey(baseUrl: string): boolean {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase();
+    return !['localhost', '127.0.0.1', '::1'].includes(host);
+  } catch {
+    return true;
+  }
 }
