@@ -1,7 +1,8 @@
 import { resolveAgentTarget } from '@teamsuzie/agent-loop';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   extraBodyForProvider,
+  fetchProviderModels,
   providerForModel,
   wireModelIdFor,
 } from '../cloud-providers.js';
@@ -14,6 +15,13 @@ const defaultQwenAgent = {
 };
 
 describe('cloud provider BYOK routing', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
   it('clears inherited Qwen body fields for OpenAI routes', () => {
     const provider = providerForModel('openai/gpt-5.5');
     expect(provider).not.toBeNull();
@@ -43,5 +51,36 @@ describe('cloud provider BYOK routing', () => {
     expect(extraBodyForProvider(provider!)).toEqual({
       enable_thinking: false,
     });
+  });
+
+  it('filters live provider catalogs to the curated picker shortlist', async () => {
+    globalThis.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: 'gpt-3.5-turbo' },
+            { id: 'gpt-4-turbo-2024-04-09' },
+            { id: 'gpt-5.5' },
+          ],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    ) as typeof fetch;
+
+    const provider = providerForModel('openai/gpt-5.5');
+    expect(provider).not.toBeNull();
+
+    const models = await fetchProviderModels(provider!, 'sk-openai');
+
+    expect(models.map((m) => m.id)).toEqual([
+      'openai/gpt-5.5',
+      'openai/gpt-5.4',
+      'openai/gpt-5.4-mini',
+    ]);
+  });
+
+  it('maps Gemini ids to the Google provider', () => {
+    const provider = providerForModel('gemini-3.5-flash');
+    expect(provider?.id).toBe('google');
   });
 });

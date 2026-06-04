@@ -105,11 +105,9 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
   const providerKeys = useProviderKeys();
   const [configuringModel, setConfiguringModel] = useState<ModelOption | null>(null);
 
-  // Decorate the static MODELS list with each Local model's effective base
-  // URL (env default OR user override). Pulled from /api/model-settings.
-  // BYOK gate: a cloud model is visible iff (a) it's the configured
-  // default — the demo-budget always covers it — or (b) the user has set
-  // a provider key for its provider. Local models are always visible.
+  // BYOK gate: cloud models are visible once the user has set a key for
+  // that provider. The server's configured default stays visible so existing
+  // installs keep a working fallback.
   const providerIdsWithKeys = useMemo(
     () => providerKeys.providers.filter((p) => p.hasKey).map((p) => p.providerId),
     [providerKeys.providers],
@@ -122,7 +120,8 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
       providerKeys.providers.map((p) => [p.providerId, p]),
     );
     const merged = new Map<string, ModelOption>();
-    // Curated seeds (default, local, and known ids for keyed providers).
+    // Curated shortlist only: current flagship/balanced/fast models per
+    // provider, plus local options.
     for (const m of MODELS) {
       const usable =
         m.local ||
@@ -132,8 +131,11 @@ export function SettingsPage({ defaultModel, cloudProviders = [] }: Props) {
           : false);
       if (usable) merged.set(m.id, m);
     }
-    // Live catalog from each keyed provider's /v1/models — newest first.
-    for (const m of liveModels.models) merged.set(m.id, m);
+    // The server filters live catalogs to the same shortlist. Keep the local
+    // row metadata when a seeded id is already present.
+    for (const m of liveModels.models) {
+      if (!merged.has(m.id)) merged.set(m.id, m);
+    }
     return Array.from(merged.values()).map((m) => {
       const setting = byId.get(m.id);
       return setting ? { ...m, resolvedBaseUrl: setting.baseUrl } : m;

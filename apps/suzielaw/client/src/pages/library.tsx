@@ -8,11 +8,13 @@ import {
   EmptyStateTitle,
   EyeOff,
   History,
+  Input,
   LoadingState,
   Pagination,
   Pencil,
   Plus,
   RowActions,
+  Search,
   Select,
   SelectContent,
   SelectItem,
@@ -71,8 +73,28 @@ function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url);
 }
 
+function matchesWorkflowSearch(workflow: Workflow, normalizedQuery: string): boolean {
+  if (!normalizedQuery) return true;
+
+  const haystack = [
+    workflow.name,
+    workflow.description,
+    workflow.prompt,
+    workflow.practiceAreas.join(' '),
+    workflow.practiceAreas.map(practiceAreaLabel).join(' '),
+  ]
+    .join('\n')
+    .toLowerCase();
+
+  return normalizedQuery
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((term) => haystack.includes(term));
+}
+
 export function LibraryPage() {
   const [areaFilter, setAreaFilter] = useState<string>(ALL);
+  const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Workflow | null>(null);
@@ -83,23 +105,23 @@ export function LibraryPage() {
   const wf = useWorkflows();
   const confirm = useConfirm();
 
-  // Reset to page 1 when the filter changes — staying on page 5 of an empty
-  // result set is jarring.
+  // Reset to page 1 when the filter or search changes.
   useEffect(() => {
     setPage(1);
-  }, [areaFilter]);
+  }, [areaFilter, query]);
 
   const matches = (areas: string[]) => areaFilter === ALL || areas.includes(areaFilter);
+  const normalizedQuery = query.trim().toLowerCase();
   const filteredWorkflows = useMemo(() => {
     return wf.workflows
-      .filter((w) => matches(w.practiceAreas))
+      .filter((w) => matches(w.practiceAreas) && matchesWorkflowSearch(w, normalizedQuery))
       // Sort: user-owned first (the user's own work goes top of list),
       // then system, both alphabetical within their group.
       .sort((a, b) => {
         if (a.source !== b.source) return a.source === 'user' ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
-  }, [wf.workflows, areaFilter]);
+  }, [wf.workflows, areaFilter, normalizedQuery]);
 
   const totalPages = Math.max(1, Math.ceil(filteredWorkflows.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -196,13 +218,28 @@ export function LibraryPage() {
       </div>
 
       <AppShellContent className="px-8 pt-6 pb-12">
-          <div className="mb-6 flex items-center justify-between gap-4 border-b border-foreground/10 pb-3">
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55">
-              Workflows
+        <div className="mb-6 flex flex-col gap-3 border-b border-foreground/10 pb-3 md:flex-row md:items-center md:justify-between">
+          <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55">
+            Workflows
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <div className="relative w-full sm:w-72">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-foreground/40"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search workflows"
+                aria-label="Search workflows"
+                className="h-9 rounded-none border-foreground/30 bg-transparent pl-8 font-mono text-[10px] uppercase tracking-[0.10em] placeholder:text-foreground/35"
+              />
             </div>
             <Select value={areaFilter} onValueChange={setAreaFilter}>
               <SelectTrigger
-                className="h-9 w-60 rounded-none border-foreground/30 bg-transparent font-mono text-[10px] uppercase tracking-[0.10em]"
+                className="h-9 w-full rounded-none border-foreground/30 bg-transparent font-mono text-[10px] uppercase tracking-[0.10em] sm:w-60"
                 aria-label="Filter by practice area"
               >
                 <SelectValue />
@@ -217,23 +254,30 @@ export function LibraryPage() {
               </SelectContent>
             </Select>
           </div>
+        </div>
 
-            {(wf.error || actionError) && (
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
-                {wf.error || actionError}
-              </p>
-            )}
-            {wf.loading ? (
-              <LoadingState>Loading library…</LoadingState>
-            ) : filteredWorkflows.length === 0 ? (
-              <EmptyState>
-                <EmptyStateTitle>No workflows in this practice area</EmptyStateTitle>
-                <EmptyStateDescription>
-                  Pick a different filter, or create one from the top-right.
-                </EmptyStateDescription>
-              </EmptyState>
-            ) : (
-              <>
+        {(wf.error || actionError) && (
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
+            {wf.error || actionError}
+          </p>
+        )}
+        {wf.loading ? (
+          <LoadingState>Loading library…</LoadingState>
+        ) : filteredWorkflows.length === 0 ? (
+          <EmptyState>
+            <EmptyStateTitle>
+              {normalizedQuery
+                ? 'No workflows match your search'
+                : 'No workflows in this practice area'}
+            </EmptyStateTitle>
+            <EmptyStateDescription>
+              {normalizedQuery
+                ? 'Try another search term or change the practice-area filter.'
+                : 'Pick a different filter, or create one from the top-right.'}
+            </EmptyStateDescription>
+          </EmptyState>
+        ) : (
+          <>
                 {/* Workflow grid — hairline-bordered tiles. The leading
                     "INDEX / TOTAL" mono caption gives the bauhaus engineering
                     feel; the practice-area chip uses saffron when filtered. */}
@@ -352,8 +396,8 @@ export function LibraryPage() {
                     />
                   </div>
                 )}
-              </>
-            )}
+          </>
+        )}
       </AppShellContent>
 
       <WorkflowFormDialog

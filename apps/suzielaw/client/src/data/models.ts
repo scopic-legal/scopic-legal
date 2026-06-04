@@ -1,5 +1,4 @@
-import { DEFAULT_MODELS, type ModelOption } from '@teamsuzie/ui';
-import { LOCAL_MODELS } from '@teamsuzie/agent-loop/local-models';
+import type { ModelOption } from '@teamsuzie/ui';
 import { OLLAMA_BASE_URL, OLLAMA_MODEL_ID } from './ollama.js';
 
 type ScopicModelOption = ModelOption & {
@@ -8,11 +7,89 @@ type ScopicModelOption = ModelOption & {
   isLocal?: boolean;
 };
 
+const ANTHROPIC_MODELS: ScopicModelOption[] = [
+  {
+    id: 'anthropic/claude-opus-4-8',
+    name: 'Claude Opus 4.8',
+    provider: 'Anthropic',
+    description: 'Highest-capability Claude option for complex legal analysis.',
+  },
+  {
+    id: 'anthropic/claude-sonnet-4-6',
+    name: 'Claude Sonnet 4.6',
+    provider: 'Anthropic',
+    description: 'Balanced Claude option for drafting, review, and day-to-day work.',
+  },
+  {
+    id: 'anthropic/claude-haiku-4-5',
+    name: 'Claude Haiku 4.5',
+    provider: 'Anthropic',
+    description: 'Fast Claude option for lighter tasks.',
+  },
+];
+
+const OPENAI_MODELS: ScopicModelOption[] = [
+  {
+    id: 'openai/gpt-5.5',
+    name: 'GPT-5.5',
+    provider: 'OpenAI',
+    description: 'Latest GPT option for high-quality legal drafting and analysis.',
+  },
+  {
+    id: 'openai/gpt-5.4',
+    name: 'GPT-5.4',
+    provider: 'OpenAI',
+    description: 'Balanced GPT option for everyday legal workflows.',
+  },
+  {
+    id: 'openai/gpt-5.4-mini',
+    name: 'GPT-5.4 mini',
+    provider: 'OpenAI',
+    description: 'Fast GPT option for lower-stakes or high-volume tasks.',
+  },
+];
+
+const GOOGLE_MODELS: ScopicModelOption[] = [
+  {
+    id: 'gemini-3.1-pro-preview',
+    name: 'Gemini 3.1 Pro',
+    provider: 'Google',
+    description: 'Advanced Gemini option for complex prompts and long-context work.',
+  },
+  {
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    provider: 'Google',
+    description: 'Fast Gemini option for everyday work.',
+  },
+];
+
+const QWEN_MODELS: ScopicModelOption[] = [
+  {
+    id: 'qwen3.7-max',
+    name: 'Qwen 3.7 Max',
+    provider: 'Alibaba Cloud',
+    description: 'Highest-capability Qwen option through DashScope.',
+  },
+  {
+    id: 'qwen3.6-plus',
+    name: 'Qwen 3.6 Plus',
+    provider: 'Alibaba Cloud',
+    description: 'Balanced Qwen option through DashScope.',
+  },
+  {
+    id: 'qwen3.6-flash',
+    name: 'Qwen 3.6 Flash',
+    provider: 'Alibaba Cloud',
+    description: 'Fast Qwen option through DashScope.',
+  },
+];
+
 export const OLLAMA_MODEL: ScopicModelOption = {
   id: OLLAMA_MODEL_ID,
   name: 'Ollama (Local)',
   label: 'Ollama (Local)',
-  provider: 'ollama',
+  provider: 'Ollama',
   description: 'Use a model running locally in Ollama.',
   local: true,
   isLocal: true,
@@ -22,79 +99,34 @@ export const OLLAMA_MODEL: ScopicModelOption = {
 };
 
 /**
- * Real OpenAI model ids the BYOK path can call. Mirrors the server-side
- * `cloud-providers.ts` OpenAI entry — the ids here are sent to the chat
- * backend, which rewrites the `openai/` prefix away before posting to
- * OpenAI's API. Pick whichever your account has access to.
- */
-const OPENAI_MODELS: ScopicModelOption[] = [
-  {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o',
-    provider: 'OpenAI',
-    description: 'Fast, broadly available, strong tool use.',
-  },
-  {
-    id: 'openai/gpt-4o-mini',
-    name: 'GPT-4o mini',
-    provider: 'OpenAI',
-    description: 'Cheaper and faster — good for verifying your key works.',
-  },
-  {
-    id: 'openai/gpt-4.1',
-    name: 'GPT-4.1',
-    provider: 'OpenAI',
-    description: 'Latest GPT-4.1 — strong reasoning and long context.',
-  },
-  {
-    id: 'openai/gpt-4.1-mini',
-    name: 'GPT-4.1 mini',
-    provider: 'OpenAI',
-    description: 'Smaller, cheaper GPT-4.1 variant.',
-  },
-];
-
-const LOCAL_MODEL_OPTIONS: ScopicModelOption[] = LOCAL_MODELS
-  .filter((model) => model.id !== OLLAMA_MODEL_ID)
-  .map((model) => ({
-    id: model.id,
-    name: model.name,
-    provider: model.provider,
-    description: model.description,
-    local: true,
-    isLocal: true,
-    resolvedBaseUrl: model.defaultBaseUrl,
-    installUrl: model.installUrl,
-  }));
-
-/**
- * Suzielaw's model picker list. The configured server default (Qwen) is the
- * demo-budget option; the OpenAI / Anthropic models are BYOK — selectable
- * once the user adds the matching provider key in Settings. The chat handler
- * enforces this server-side too. Ollama is always available for local use.
- *
- * The upstream DEFAULT_MODELS ships a placeholder `openai/gpt-5.5` id that
- * isn't a real OpenAI API model — we drop it and substitute the real GPT
- * ids above so a user's OpenAI key actually returns results.
+ * Lawyer-facing shortlist. Keep this deliberately small: current flagship,
+ * balanced, and fast models per supported cloud provider. Provider catalogs
+ * include dated snapshots, legacy models, audio/search/embedding models, and
+ * preview variants that make Settings hard to scan.
  */
 export const MODELS: ModelOption[] = [
-  ...DEFAULT_MODELS.filter((m) => m.id !== 'openai/gpt-5.5'),
+  ...ANTHROPIC_MODELS,
   ...OPENAI_MODELS,
-  ...LOCAL_MODEL_OPTIONS,
+  ...GOOGLE_MODELS,
+  ...QWEN_MODELS,
   OLLAMA_MODEL,
 ];
 
 /**
  * Maps a `ModelOption.id` to the cloud provider id it routes through for
- * BYOK. Mirrors the server-side `cloud-providers.ts` registry. Models
- * absent from this map are treated as not-BYOK (typically: locally hosted
- * or the demo-budget default).
+ * BYOK. Mirrors the server-side `cloud-providers.ts` registry. Models absent
+ * from this map are treated as local/non-BYOK options.
  */
 export const MODEL_PROVIDER_ID: Record<string, string | undefined> = {
+  'anthropic/claude-opus-4-8': 'anthropic',
   'anthropic/claude-sonnet-4-6': 'anthropic',
-  'openai/gpt-4o': 'openai',
-  'openai/gpt-4o-mini': 'openai',
-  'openai/gpt-4.1': 'openai',
-  'openai/gpt-4.1-mini': 'openai',
+  'anthropic/claude-haiku-4-5': 'anthropic',
+  'openai/gpt-5.5': 'openai',
+  'openai/gpt-5.4': 'openai',
+  'openai/gpt-5.4-mini': 'openai',
+  'gemini-3.1-pro-preview': 'google',
+  'gemini-3.5-flash': 'google',
+  'qwen3.7-max': 'dashscope',
   'qwen3.6-plus': 'dashscope',
+  'qwen3.6-flash': 'dashscope',
 };

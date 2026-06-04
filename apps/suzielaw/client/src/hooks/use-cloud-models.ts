@@ -7,19 +7,18 @@ interface CloudModelsResult {
   loading: boolean;
 }
 
-/** Display labels for the optgroup headers; falls back to the raw id. */
+/** Display labels for live provider rows; falls back to the raw id. */
 const PROVIDER_LABELS: Record<string, string> = {
   openai: 'OpenAI',
   anthropic: 'Anthropic (Claude)',
   dashscope: 'Qwen (Alibaba)',
+  google: 'Google Gemini',
 };
 
 /**
  * Fetches the live model catalog for each cloud provider the user has a key
- * for (server endpoint `/api/cloud-models/:providerId`, which queries the
- * provider's own `/v1/models` with the saved key). This keeps the picker in
- * sync with whatever models the account can actually call — including models
- * released after this code shipped — instead of a hard-coded list.
+ * for. The server filters that catalog to Scopic's lawyer-facing shortlist so
+ * Settings does not become a provider-console model dump.
  */
 export function useCloudModels(providerIds: string[]): CloudModelsResult {
   const [models, setModels] = useState<ModelOption[]>([]);
@@ -53,7 +52,7 @@ export function useCloudModels(providerIds: string[]): CloudModelsResult {
               collected.push({ id: m.id, name: m.name, provider: label });
             }
           } catch {
-            // Provider unreachable — skip; curated seeds still cover it.
+            // Provider unreachable; curated seeds still cover it.
           }
         }),
       );

@@ -4,6 +4,7 @@ import cors from 'cors';
 import express from 'express';
 import type { Request } from 'express';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import {
   SequelizeService,
@@ -80,6 +81,7 @@ import { createModelSettingsRouter, ModelSettingsStore } from '@teamsuzie/model-
 import {
   CLOUD_PROVIDERS,
   CLOUD_PROVIDER_IDS,
+  GOOGLE_OPENAI_COMPAT_BASE_URL,
   extraBodyForProvider,
   fetchProviderModels,
   providerForModel,
@@ -459,6 +461,53 @@ if (config.billing.enabled && billingService) {
   app.use('/api/billing/webhook', createBillingWebhookRouter({ service: billingService }));
 }
 app.use(express.json({ limit: '2mb' }));
+
+app.post('/api/provider-proxy/google/v1/chat/completions', async (req, res) => {
+  const authorization = req.header('authorization') ?? '';
+  if (!authorization.toLowerCase().startsWith('bearer ')) {
+    res.status(401).json({ error: 'missing_google_api_key' });
+    return;
+  }
+
+  try {
+    const upstream = await fetch(`${GOOGLE_OPENAI_COMPAT_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: authorization,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body ?? {}),
+      signal: AbortSignal.timeout(10 * 60 * 1000),
+    });
+
+    res.status(upstream.status);
+    const contentType = upstream.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+    const cacheControl = upstream.headers.get('cache-control');
+    if (cacheControl) res.setHeader('Cache-Control', cacheControl);
+
+    if (!upstream.body) {
+      res.end(await upstream.text());
+      return;
+    }
+
+    const stream = Readable.fromWeb(upstream.body);
+    stream.on('error', () => {
+      if (!res.destroyed) res.end();
+    });
+    stream.pipe(res);
+  } catch (err) {
+    if (!res.headersSent) {
+      res.status(502).json({
+        error: 'google_proxy_failed',
+        message: err instanceof Error ? err.message : 'Google Gemini request failed',
+      });
+    } else {
+      res.end();
+    }
+  }
+});
+
 sessionService?.init(app);
 if (!authBypassEnabled) {
   app.use(createCsrfMiddleware({
@@ -541,10 +590,9 @@ app.use(
 );
 
 // Live model catalog for a cloud provider. Uses the caller's saved key to
-// query the provider's own /v1/models endpoint so the picker shows whatever
-// models the account can actually call — including ones newer than this code.
-// Falls back to the provider's curated seed list if the fetch fails (offline,
-// rate-limited, key lacks list scope, …) so the picker is never empty.
+// query the provider's own /v1/models endpoint, then filters to Scopic's
+// curated lawyer-facing shortlist. Falls back to that shortlist if the fetch
+// fails (offline, rate-limited, key lacks list scope, etc.).
 app.get('/api/cloud-models/:providerId', requireAuth, async (req, res) => {
   const provider = CLOUD_PROVIDERS.find((p) => p.id === req.params.providerId);
   if (!provider) {
@@ -714,12 +762,19 @@ function providerTarget(
   uiModelId: string,
 ): ReviewLlmTarget {
   return {
-    baseUrl: provider.baseUrl,
+    baseUrl: cloudProviderBaseUrl(provider),
     apiKey,
     model: wireModelIdFor(uiModelId),
     extraBody: extraBodyForProvider(provider),
     meterTokens: false,
   };
+}
+
+function cloudProviderBaseUrl(provider: (typeof CLOUD_PROVIDERS)[number]): string {
+  if (provider.id === 'google') {
+    return `${config.publicUrl}/api/provider-proxy/google`;
+  }
+  return provider.baseUrl;
 }
 
 function firstKeyedProviderTarget(ownerEmail: string): ReviewLlmTarget | null {
@@ -1341,7 +1396,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     const userKey = modelSettings.getProviderKey(ownerEmail, cloudProvider.id);
     if (!userKey) return;
     userRegistry[uiModelId] = {
-      baseUrl: cloudProvider.baseUrl,
+      baseUrl: cloudProviderBaseUrl(cloudProvider),
       apiKey: userKey,
       model: wireModelIdFor(uiModelId),
       extraBody: extraBodyForProvider(cloudProvider),

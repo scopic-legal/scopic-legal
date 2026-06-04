@@ -392,10 +392,8 @@ export function AssistantPage({
     [providerKeys.providers],
   );
   const liveModels = useCloudModels(providerIdsWithKeys);
-  // Models offered by the in-composer picker. Curated seeds (the configured
-  // default + known ids for providers with a key) show immediately; the live
-  // catalog from each provider's /v1/models is merged in once loaded, so the
-  // newest models appear without any code change. Deduped by id. Ollama is
+  // Models offered by the in-composer picker. Keep this aligned with Settings:
+  // the curated cloud shortlist appears for keyed providers, and Ollama is
   // handled separately inside the picker.
   const composerModels = useMemo(() => {
     const keysByProvider = new Map(
@@ -412,7 +410,9 @@ export function AssistantPage({
           : false);
       if (usable) byId.set(m.id, m);
     }
-    for (const m of liveModels.models) byId.set(m.id, m);
+    for (const m of liveModels.models) {
+      if (!byId.has(m.id)) byId.set(m.id, m);
+    }
     return Array.from(byId.values());
   }, [providerKeys.providers, defaultModel, liveModels.models]);
   const endRef = useRef<HTMLDivElement | null>(null);
