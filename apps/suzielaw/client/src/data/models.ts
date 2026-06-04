@@ -66,8 +66,8 @@ const GOOGLE_MODELS: ScopicModelOption[] = [
 
 const QWEN_MODELS: ScopicModelOption[] = [
   {
-    id: 'qwen3.7-max',
-    name: 'Qwen 3.7 Max',
+    id: 'qwen3.6-max-preview',
+    name: 'Qwen 3.6 Max Preview',
     provider: 'Alibaba Cloud',
     description: 'Highest-capability Qwen option through DashScope.',
   },
@@ -126,7 +126,7 @@ export const MODEL_PROVIDER_ID: Record<string, string | undefined> = {
   'openai/gpt-5.4-mini': 'openai',
   'gemini-3.1-pro-preview': 'google',
   'gemini-3.5-flash': 'google',
-  'qwen3.7-max': 'dashscope',
+  'qwen3.6-max-preview': 'dashscope',
   'qwen3.6-plus': 'dashscope',
   'qwen3.6-flash': 'dashscope',
 };

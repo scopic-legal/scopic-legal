@@ -125,9 +125,9 @@ export const CLOUD_PROVIDERS: CloudProvider[] = [
     modelsUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models',
     listAuth: 'bearer',
     chatModelMatchers: ['qwen'],
-    modelIds: ['qwen3.7-max', 'qwen3.6-plus', 'qwen3.6-flash'],
+    modelIds: ['qwen3.6-max-preview', 'qwen3.6-plus', 'qwen3.6-flash'],
     modelNames: {
-      'qwen3.7-max': 'Qwen 3.7 Max',
+      'qwen3.6-max-preview': 'Qwen 3.6 Max Preview',
       'qwen3.6-plus': 'Qwen 3.6 Plus',
       'qwen3.6-flash': 'Qwen 3.6 Flash',
     },
