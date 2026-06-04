@@ -18,10 +18,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Trash2,
   Users,
   useConfirm,
@@ -200,22 +196,10 @@ export function LibraryPage() {
       </div>
 
       <AppShellContent className="px-8 pt-6 pb-12">
-        <Tabs defaultValue="prompts">
           <div className="mb-6 flex items-center justify-between gap-4 border-b border-foreground/10 pb-3">
-            <TabsList className="bg-transparent">
-              <TabsTrigger
-                value="prompts"
-                className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 data-[state=active]:border-saffron-400 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
-              >
-                Workflows
-              </TabsTrigger>
-              <TabsTrigger
-                value="background"
-                className="rounded-none border-b-2 border-transparent bg-transparent px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55 data-[state=active]:border-saffron-400 data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
-              >
-                Background jobs
-              </TabsTrigger>
-            </TabsList>
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/55">
+              Workflows
+            </div>
             <Select value={areaFilter} onValueChange={setAreaFilter}>
               <SelectTrigger
                 className="h-9 w-60 rounded-none border-foreground/30 bg-transparent font-mono text-[10px] uppercase tracking-[0.10em]"
@@ -234,7 +218,6 @@ export function LibraryPage() {
             </Select>
           </div>
 
-          <TabsContent value="prompts">
             {(wf.error || actionError) && (
               <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.10em] text-destructive">
                 {wf.error || actionError}
@@ -371,17 +354,6 @@ export function LibraryPage() {
                 )}
               </>
             )}
-          </TabsContent>
-
-          <TabsContent value="background">
-            <EmptyState>
-              <EmptyStateTitle>Background jobs — coming soon</EmptyStateTitle>
-              <EmptyStateDescription>
-                Long-running, multi-document workflows (deal-folder change-of-control extraction across dozens of contracts, litigation timeline build-outs from full case files, etc.) will run from this tab as background jobs. The Workflows tab covers single-document and single-turn agentic flows — those are all live today.
-              </EmptyStateDescription>
-            </EmptyState>
-          </TabsContent>
-        </Tabs>
       </AppShellContent>
 
       <WorkflowFormDialog
