@@ -213,9 +213,10 @@ export function DiffPanel({
     matterId && leftFileId && rightFileId
       ? `/api/matters/${encodeURIComponent(matterId)}/diff/download?leftFileId=${encodeURIComponent(leftFileId)}&rightFileId=${encodeURIComponent(rightFileId)}`
       : undefined;
+  const changeEvents = result.events.filter((event) => event.kind !== 'unchanged');
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
         <div>
           <div className="text-sm font-medium text-foreground">
             {result.left.name} → {result.right.name}
@@ -234,11 +235,9 @@ export function DiffPanel({
           </a>
         )}
       </div>
-      <div className="space-y-2">
-        {result.events
-          .filter((event) => event.kind !== 'unchanged')
-          .slice(0, 80)
-          .map((event, index) => (
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="space-y-2">
+          {changeEvents.map((event, index) => (
             <div key={index} className="border border-border bg-card p-3 text-sm">
               <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
                 {event.kind}
@@ -255,6 +254,7 @@ export function DiffPanel({
               )}
             </div>
           ))}
+        </div>
       </div>
     </div>
   );
