@@ -122,6 +122,14 @@ import {
 } from '@teamsuzie/docx';
 import { draftChatTitle } from './chat-title.js';
 import { db } from './db.js';
+import {
+  OLLAMA_DEFAULT_BASE_URL,
+  OLLAMA_PROVIDER_ID,
+  fetchOllamaModelCapabilities,
+  fetchOllamaModels,
+  normalizeOpenAICompatibleBaseUrl,
+  ollamaModelSupportsTools,
+} from './ollama-models.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');
@@ -130,8 +138,6 @@ const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
 const fileStore = new InMemoryFileStore({ dataDir: config.files.dir });
 const docStore = new InMemoryDocumentStore();
 const tokenBudget = new TokenBudgetStore(db, config.tokenBudget.defaultLimit);
-const OLLAMA_PROVIDER_ID = 'ollama';
-const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434';
 const OLLAMA_LOCAL_MODEL: LocalModel = {
   id: OLLAMA_PROVIDER_ID,
   name: 'Ollama (Local)',
@@ -142,79 +148,25 @@ const OLLAMA_LOCAL_MODEL: LocalModel = {
   envSuffix: 'OLLAMA',
   defaultBaseUrl: OLLAMA_DEFAULT_BASE_URL,
 };
+const OLLAMA_NO_TOOLS_SYSTEM_PROMPT = `
 
-function normalizeOpenAICompatibleBaseUrl(value: string | undefined): string | undefined {
-  return value?.trim().replace(/\/+$/, '').replace(/\/v1$/i, '');
+This turn is using a local Ollama model that does not advertise tool-calling support. Do not try to call tools or claim that you used them. Answer from the conversation and any plain-text context already provided. If the request requires document conversion, legal database lookup, drafting/export tools, or another unavailable tool, say that this selected local model can answer chat-only requests and ask the user to switch to a tool-capable Ollama or cloud model for that workflow.`;
+
+function appendSystemPrompt(base: string | undefined, addition: string): string {
+  return base ? `${base}${addition}` : addition.trimStart();
 }
 
-function modelNamesFromOllamaTags(data: unknown): string[] {
-  const models = (data as { models?: unknown })?.models;
-  if (!Array.isArray(models)) return [];
-  return models
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') return '';
-      const candidate = entry as { name?: unknown; model?: unknown };
-      return typeof candidate.name === 'string'
-        ? candidate.name
-        : typeof candidate.model === 'string'
-          ? candidate.model
-          : '';
-    })
-    .map((name) => name.trim())
-    .filter(Boolean);
-}
-
-function modelNamesFromOpenAIModels(data: unknown): string[] {
-  const models = (data as { data?: unknown })?.data;
-  if (!Array.isArray(models)) return [];
-  return models
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') return '';
-      const candidate = entry as { id?: unknown; name?: unknown };
-      return typeof candidate.id === 'string'
-        ? candidate.id
-        : typeof candidate.name === 'string'
-          ? candidate.name
-          : '';
-    })
-    .map((name) => name.trim())
-    .filter(Boolean);
-}
-
-function uniqueSortedModelNames(names: string[]): string[] {
-  return [...new Set(names)].sort((a, b) => a.localeCompare(b));
-}
-
-async function fetchJsonWithOptionalBearer(
-  url: string,
-  apiKey: string | undefined,
-): Promise<unknown> {
-  const response = await fetch(url, {
-    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
-    signal: AbortSignal.timeout(5_000),
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`${url} returned ${response.status}${text ? `: ${text.slice(0, 120)}` : ''}`);
-  }
-  return response.json();
-}
-
-async function fetchOllamaModelNames(
-  baseUrl: string,
-  apiKey: string | undefined,
-): Promise<string[]> {
-  const normalized = normalizeOpenAICompatibleBaseUrl(baseUrl) ?? OLLAMA_DEFAULT_BASE_URL;
+async function selectedOllamaModelSupportsTools(agent: { baseUrl: string; apiKey?: string; model: string }): Promise<boolean> {
   try {
-    const native = await fetchJsonWithOptionalBearer(`${normalized}/api/tags`, apiKey);
-    const names = modelNamesFromOllamaTags(native);
-    if (names.length > 0) return uniqueSortedModelNames(names);
-  } catch {
-    // Some local gateways expose only the OpenAI-compatible model list.
+    const capabilities = await fetchOllamaModelCapabilities(agent.baseUrl, agent.apiKey, agent.model);
+    return ollamaModelSupportsTools(capabilities) === true;
+  } catch (err) {
+    console.warn(
+      `[ollama] Could not read capabilities for ${agent.model}; disabling tools for this turn:`,
+      err instanceof Error ? err.message : err,
+    );
+    return false;
   }
-
-  const openai = await fetchJsonWithOptionalBearer(`${normalized}/v1/models`, apiKey);
-  return uniqueSortedModelNames(modelNamesFromOpenAIModels(openai));
 }
 
 let skillState: SkillLoadResult = { skills: [], systemPrompt: '', derivedHosts: [] };
@@ -630,12 +582,12 @@ app.get('/api/local-models/ollama/models', requireAuth, async (req, res) => {
     normalizeOpenAICompatibleBaseUrl(target?.baseUrl) ?? OLLAMA_DEFAULT_BASE_URL;
 
   try {
-    const models = await fetchOllamaModelNames(baseUrl, target?.apiKey);
+    const models = await fetchOllamaModels(baseUrl, target?.apiKey);
     res.setHeader('Cache-Control', 'no-store');
     res.json({
       provider: OLLAMA_PROVIDER_ID,
       baseUrl,
-      models: models.map((name) => ({ id: name, name })),
+      models,
     });
   } catch (err) {
     res.status(502).json({
@@ -1611,6 +1563,14 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   });
   turnConfig.tools = overridden.tools;
   turnConfig.systemPrompt = overridden.systemPrompt;
+
+  if (isOllamaRequest && !(await selectedOllamaModelSupportsTools(agent))) {
+    turnConfig.tools = [];
+    turnConfig.systemPrompt = appendSystemPrompt(
+      turnConfig.systemPrompt,
+      OLLAMA_NO_TOOLS_SYSTEM_PROMPT,
+    );
+  }
 
   // Accumulators so we can persist the assistant turn into chat_messages
   // when the chat is matter-scoped. Tool events are kept as-is; the final
