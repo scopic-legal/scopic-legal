@@ -26,10 +26,8 @@ import { useChatComposer } from '../hooks/use-chat-composer.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { PaywallDialog } from '../components/paywall-dialog.js';
 import { ComposerModelPicker } from '../components/composer-model-picker.js';
-import { useCloudModels } from '../hooks/use-cloud-models.js';
-import { MODELS, MODEL_PROVIDER_ID } from '../data/models.js';
-import { OLLAMA_MODEL_ID, selectedModelPayload } from '../data/ollama.js';
-import type { ModelOption } from '@teamsuzie/ui';
+import { useComposerModels } from '../hooks/use-composer-models.js';
+import { selectedModelPayload } from '../data/ollama.js';
 import {
   TrackedChangesPanel,
   type ProposeEditsResult,
@@ -386,35 +384,10 @@ export function AssistantPage({
   // Used to detect first-run: when a 401/API-key error fires and no
   // provider key has ever been saved, auto-navigate to Settings.
   const providerKeys = useProviderKeys();
-  // Provider ids the user has a key for — drives the live model fetch.
-  const providerIdsWithKeys = useMemo(
-    () => providerKeys.providers.filter((p) => p.hasKey).map((p) => p.providerId),
-    [providerKeys.providers],
-  );
-  const liveModels = useCloudModels(providerIdsWithKeys);
   // Models offered by the in-composer picker. Keep this aligned with Settings:
   // the curated cloud shortlist appears for keyed providers, and Ollama is
   // handled separately inside the picker.
-  const composerModels = useMemo(() => {
-    const keysByProvider = new Map(
-      providerKeys.providers.map((p) => [p.providerId, p]),
-    );
-    const byId = new Map<string, ModelOption>();
-    for (const m of MODELS) {
-      if (m.local && m.id === OLLAMA_MODEL_ID) continue;
-      const usable =
-        m.local ||
-        m.id === defaultModel ||
-        (MODEL_PROVIDER_ID[m.id]
-          ? keysByProvider.get(MODEL_PROVIDER_ID[m.id]!)?.hasKey ?? false
-          : false);
-      if (usable) byId.set(m.id, m);
-    }
-    for (const m of liveModels.models) {
-      if (!byId.has(m.id)) byId.set(m.id, m);
-    }
-    return Array.from(byId.values());
-  }, [providerKeys.providers, defaultModel, liveModels.models]);
+  const composerModels = useComposerModels(providerKeys.providers, defaultModel);
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -799,24 +772,26 @@ export function AssistantPage({
                 download_filename?: unknown;
                 downloadFilename?: unknown;
               };
+              const docxUrl =
+                typeof result.download_url === 'string'
+                  ? result.download_url
+                  : typeof result.downloadUrl === 'string'
+                    ? result.downloadUrl
+                    : undefined;
+              const docxName =
+                typeof result.filename === 'string'
+                  ? result.filename
+                  : typeof result.download_filename === 'string'
+                    ? result.download_filename
+                    : typeof result.downloadFilename === 'string'
+                      ? result.downloadFilename
+                      : undefined;
               const ds = result._doc_state;
+              let updatedArtifactFromDocState = false;
               if (ds && typeof ds === 'object') {
                 const obj = ds as { doc_id?: string; title?: string; markdown?: string };
                 if (typeof obj.doc_id === 'string' && typeof obj.markdown === 'string') {
-                  const docxUrl =
-                    typeof result.download_url === 'string'
-                      ? result.download_url
-                      : typeof result.downloadUrl === 'string'
-                        ? result.downloadUrl
-                        : undefined;
-                  const docxName =
-                    typeof result.filename === 'string'
-                      ? result.filename
-                      : typeof result.download_filename === 'string'
-                        ? result.download_filename
-                        : typeof result.downloadFilename === 'string'
-                          ? result.downloadFilename
-                          : undefined;
+                  updatedArtifactFromDocState = true;
                   setActiveArtifact((prev) => {
                     const carry = prev && prev.docId === obj.doc_id ? prev : null;
                     return {
@@ -828,6 +803,22 @@ export function AssistantPage({
                     };
                   });
                 }
+              }
+              if (
+                !updatedArtifactFromDocState &&
+                docxUrl &&
+                (docxName?.toLowerCase().endsWith('.docx') ||
+                  docxUrl.toLowerCase().includes('.docx'))
+              ) {
+                setActiveArtifact((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        docxDownloadUrl: docxUrl,
+                        docxFilename: docxName ?? prev.docxFilename,
+                      }
+                    : prev,
+                );
               }
             }
             setMessages((current) =>

@@ -235,7 +235,7 @@ export function DiffPanel({
           </a>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 overflow-y-scroll px-4 py-4">
         <div className="space-y-2">
           {changeEvents.map((event, index) => (
             <div key={index} className="border border-border bg-card p-3 text-sm">

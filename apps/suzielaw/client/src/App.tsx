@@ -447,11 +447,11 @@ export default function App() {
                   />
                   <Route
                     path="/matters/:matterId/reviews/:reviewId/chats/:chatId"
-                    element={<ReviewChatPage />}
+                    element={<ReviewChatPage defaultModel={health?.agent?.model} />}
                   />
                   <Route
                     path="/matters/:matterId/chats/:chatId"
-                    element={<MatterChatPage />}
+                    element={<MatterChatPage defaultModel={health?.agent?.model} />}
                   />
                   <Route path="/library" element={<LibraryPage />} />
                   <Route path="/personas" element={<PersonasPage />} />
@@ -472,7 +472,7 @@ export default function App() {
                   <Route path="/billing" element={<BillingPage />} />
                 </Routes>
               </AppShellMain>
-              <SidePanelSurface />
+              <SidePanelSurface className="!h-full max-h-full" />
             </AppShell>
             <PersonaPicker
               open={pickerOpen}

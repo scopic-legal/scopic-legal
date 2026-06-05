@@ -29,6 +29,9 @@ import { useMatter } from '../hooks/use-matter.js';
 import { useMatterChats } from '../hooks/use-matter-chats.js';
 import { useChatComposer } from '../hooks/use-chat-composer.js';
 import { WorkflowPickerDialog } from '../components/workflow-picker-dialog.js';
+import { ComposerModelPicker } from '../components/composer-model-picker.js';
+import { useComposerModels } from '../hooks/use-composer-models.js';
+import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { selectedModelPayload } from '../data/ollama.js';
 import {
   TrackedChangesPanel,
@@ -189,7 +192,11 @@ function MessageItem({ message, agentName, isActive, onJump, docLabels, chatId }
   );
 }
 
-export function MatterChatPage() {
+export interface MatterChatPageProps {
+  defaultModel?: string;
+}
+
+export function MatterChatPage({ defaultModel }: MatterChatPageProps) {
   const params = useParams<{ matterId: string; chatId: string }>();
   const matterId = params.matterId;
   const chatId = params.chatId;
@@ -214,7 +221,12 @@ export function MatterChatPage() {
   );
   const [workflowPickerOpen, setWorkflowPickerOpen] = useState(false);
   const { openDoc } = useDocSidePanel();
-  const [selectedModel] = useSelectedModel(SELECTED_MODEL_KEY);
+  const [selectedModel, setSelectedModel] = useSelectedModel(
+    SELECTED_MODEL_KEY,
+    defaultModel,
+  );
+  const providerKeys = useProviderKeys();
+  const composerModels = useComposerModels(providerKeys.providers, defaultModel);
   const endRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   // Set while a /api/chat fetch is in flight so the user can stop it. The
@@ -593,7 +605,7 @@ export function MatterChatPage() {
                 className="block w-full min-h-16 resize-none border-0 bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               />
               <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"
                     variant="ghost"
@@ -606,6 +618,13 @@ export function MatterChatPage() {
                     <Sparkles className="size-4" aria-hidden />
                     <span className="text-xs">Workflow</span>
                   </Button>
+                  <ComposerModelPicker
+                    models={composerModels}
+                    selectedModel={selectedModel}
+                    defaultModelId={defaultModel}
+                    onSelectModel={setSelectedModel}
+                    disabled={isStreaming}
+                  />
                   <p className="hidden text-xs text-muted-foreground sm:inline">
                     Enter sends · Shift+Enter newline
                   </p>
