@@ -23,12 +23,15 @@ export async function convertFileToMarkdown(
   record: FileRecord,
   opts: { markitdownBaseUrl: string },
 ): Promise<string> {
-  if (
-    !opts.markitdownBaseUrl &&
-    !(isDocxMimeType(record.mimeType) || record.name.toLowerCase().endsWith('.docx'))
-  ) {
+  const lowerName = record.name.toLowerCase();
+  const isStandaloneSupported =
+    isDocxMimeType(record.mimeType) ||
+    lowerName.endsWith('.docx') ||
+    record.mimeType === 'application/pdf' ||
+    lowerName.endsWith('.pdf');
+  if (!opts.markitdownBaseUrl && !isStandaloneSupported) {
     throw new Error(
-      `Cannot convert ${record.mimeType || record.name}: markitdown-agent is not configured. Only DOCX is supported in standalone mode.`,
+      `Cannot convert ${record.mimeType || record.name}: markitdown-agent is not configured. Only DOCX and PDF are supported in standalone mode.`,
     );
   }
   const { markdown } = await convertToMarkdown(record.bytes, {

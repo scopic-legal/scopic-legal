@@ -37,6 +37,7 @@
     "exceljs": "^4.4.0",
     "express": "^5.1.0",
     "multer": "^2.0.1",
+    "pdfjs-dist": "^4.10.38",
     "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
