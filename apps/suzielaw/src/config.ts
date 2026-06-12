@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { buildLocalAgentRegistry, LOCAL_MODELS } from '@teamsuzie/agent-loop';
 import { buildOAuthProvidersFromEnv, parseTokenLimit } from '@teamsuzie/hosted-demo';
 import type { SharedAuthConfig } from '@teamsuzie/shared-auth';
+import { parseConfiguredRedactionMode } from './redaction.js';
 
 const ENV_PREFIX = 'SCOPIC_';
 const PRE_SCOPIC_ENV_PREFIX = ['SU', 'ZIE', 'LAW_'].join('');
@@ -218,6 +219,22 @@ export const config = {
      * inside the install dir and gets wiped by the installer.
      */
     dir: process.env.SCOPIC_FILES_DIR || './data/files',
+  },
+  redaction: {
+    /**
+     * Outbound model-context guard. "auto" redacts before remote model calls
+     * and leaves localhost/Ollama-style targets untouched; "always" redacts
+     * every model call; "off" disables automatic masking while preserving
+     * matter scan endpoints.
+     */
+    mode: parseConfiguredRedactionMode(process.env.SCOPIC_REDACTION_MODE),
+    /**
+     * Optional Presidio Analyzer service, e.g. http://localhost:5002.
+     * When unset, Scopic uses its built-in legal/PII recognizers.
+     */
+    analyzerUrl: process.env.SCOPIC_PRESIDIO_ANALYZER_URL || undefined,
+    scoreThreshold: parseFloat(process.env.SCOPIC_REDACTION_SCORE_THRESHOLD || '0.55'),
+    entities: parseList(process.env.SCOPIC_REDACTION_ENTITIES),
   },
   markitdown: {
     /** markitdown-agent base URL. When set, the agent gets convert_to_markdown + export_to_docx. */

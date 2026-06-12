@@ -18,6 +18,7 @@ import {
   Square,
   ToolUseStatus,
   cn,
+  EyeOff,
   useAutoResizeTextarea,
   useSelectedModel,
   type ToolEvent,
@@ -33,6 +34,11 @@ import { ComposerModelPicker } from '../components/composer-model-picker.js';
 import { useComposerModels } from '../hooks/use-composer-models.js';
 import { useProviderKeys } from '../hooks/use-provider-keys.js';
 import { selectedModelPayload } from '../data/ollama.js';
+import { RedactionToggle } from '../components/redaction-toggle.js';
+import {
+  redactionModePayload,
+  useRedactionPreference,
+} from '../hooks/use-redaction-preference.js';
 import {
   TrackedChangesPanel,
   type ProposeEditsResult,
@@ -50,7 +56,13 @@ interface UiMessage {
   role: 'user' | 'assistant';
   content: string;
   toolEvents?: ToolEvent[];
+  redactionSummary?: ContextRedactionSummary;
   parsed?: { text: string; citations: Citation[] };
+}
+
+interface ContextRedactionSummary {
+  total: number;
+  byType: Record<string, number>;
 }
 
 function pageHintFromLocator(locator: string | undefined): number | undefined {
@@ -160,6 +172,13 @@ function MessageItem({ message, agentName, isActive, onJump, docLabels, chatId }
       <div className="text-xs font-medium text-muted-foreground">
         {agentName}
       </div>
+      {message.redactionSummary && message.redactionSummary.total > 0 && (
+        <div className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          <EyeOff className="size-3" aria-hidden />
+          Redacted {message.redactionSummary.total} context span
+          {message.redactionSummary.total === 1 ? '' : 's'}
+        </div>
+      )}
       {showTyping ? (
         <div className="text-sm leading-relaxed">
           <TypingDots />
@@ -227,6 +246,7 @@ export function MatterChatPage({ defaultModel }: MatterChatPageProps) {
   );
   const providerKeys = useProviderKeys();
   const composerModels = useComposerModels(providerKeys.providers, defaultModel);
+  const [redactionEnabled, setRedactionEnabled] = useRedactionPreference();
   const endRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   // Set while a /api/chat fetch is in flight so the user can stop it. The
@@ -354,6 +374,7 @@ export function MatterChatPage({ defaultModel }: MatterChatPageProps) {
           history: historyForServer,
           attachmentIds: [],
           ...modelPayload,
+          ...redactionModePayload(redactionEnabled),
           workflowId: sentWorkflowId ?? undefined,
         }),
         signal: ac.signal,
@@ -376,11 +397,12 @@ export function MatterChatPage({ defaultModel }: MatterChatPageProps) {
           if (!line) continue;
           const payload = JSON.parse(line.slice(6)) as
             | { type: 'chunk'; text: string }
-            | { type: 'tool_call'; id: string; name: string; args: unknown }
-            | { type: 'tool_result'; id: string; name: string; result: unknown }
-            | { type: 'tool_error'; id: string; name: string; error: string }
-            | { type: 'done' }
-            | { type: 'error'; message: string };
+          | { type: 'tool_call'; id: string; name: string; args: unknown }
+          | { type: 'tool_result'; id: string; name: string; result: unknown }
+          | { type: 'tool_error'; id: string; name: string; error: string }
+          | { type: 'context_redaction'; summary: ContextRedactionSummary }
+          | { type: 'done' }
+          | { type: 'error'; message: string };
 
           if (payload.type === 'chunk') {
             setMessages((cur) =>
@@ -430,6 +452,12 @@ export function MatterChatPage({ defaultModel }: MatterChatPageProps) {
                 );
                 return { ...m, toolEvents: events };
               }),
+            );
+          } else if (payload.type === 'context_redaction') {
+            setMessages((cur) =>
+              cur.map((m) =>
+                m.id === assistantId ? { ...m, redactionSummary: payload.summary } : m,
+              ),
             );
           } else if (payload.type === 'error') {
             setError(payload.message);
@@ -624,6 +652,12 @@ export function MatterChatPage({ defaultModel }: MatterChatPageProps) {
                     defaultModelId={defaultModel}
                     onSelectModel={setSelectedModel}
                     disabled={isStreaming}
+                  />
+                  <RedactionToggle
+                    enabled={redactionEnabled}
+                    onChange={setRedactionEnabled}
+                    disabled={isStreaming}
+                    className="text-muted-foreground hover:text-foreground"
                   />
                   <p className="hidden text-xs text-muted-foreground sm:inline">
                     Enter sends · Shift+Enter newline

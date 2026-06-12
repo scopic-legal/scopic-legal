@@ -28,6 +28,11 @@ import { PaywallDialog } from '../components/paywall-dialog.js';
 import { ComposerModelPicker } from '../components/composer-model-picker.js';
 import { useComposerModels } from '../hooks/use-composer-models.js';
 import { selectedModelPayload } from '../data/ollama.js';
+import { RedactionToggle } from '../components/redaction-toggle.js';
+import {
+  redactionModePayload,
+  useRedactionPreference,
+} from '../hooks/use-redaction-preference.js';
 import {
   TrackedChangesPanel,
   type ProposeEditsResult,
@@ -45,8 +50,14 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   toolEvents?: ToolEvent[];
+  redactionSummary?: ContextRedactionSummary;
   /** Set on stream `done`: text-with-sentinel-stripped + extracted citations. */
   parsed?: { text: string; citations: Citation[] };
+}
+
+interface ContextRedactionSummary {
+  total: number;
+  byType: Record<string, number>;
 }
 
 /**
@@ -109,7 +120,7 @@ interface AssistantRouteState {
 }
 
 
-import { Paperclip, Sparkles, Square } from '@teamsuzie/ui';
+import { EyeOff, Paperclip, Sparkles, Square } from '@teamsuzie/ui';
 import { WorkflowPickerDialog } from '../components/workflow-picker-dialog.js';
 import {
   ASSISTANT_STARTERS as PROMPTS,
@@ -198,6 +209,13 @@ function MessageItem({
       <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground/45">
         {agentName}
       </div>
+      {message.redactionSummary && message.redactionSummary.total > 0 && (
+        <div className="inline-flex w-fit items-center gap-1.5 border border-foreground/15 bg-muted px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/55">
+          <EyeOff className="size-3" aria-hidden />
+          Redacted {message.redactionSummary.total} context span
+          {message.redactionSummary.total === 1 ? '' : 's'}
+        </div>
+      )}
       {showTyping ? (
         <div className="text-[15px] leading-relaxed">
           <TypingDots />
@@ -388,6 +406,7 @@ export function AssistantPage({
   // the curated cloud shortlist appears for keyed providers, and Ollama is
   // handled separately inside the picker.
   const composerModels = useComposerModels(providerKeys.providers, defaultModel);
+  const [redactionEnabled, setRedactionEnabled] = useRedactionPreference();
   const endRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -679,6 +698,7 @@ export function AssistantPage({
           history: nextHistory.slice(0, -1),
           attachmentIds: sentAttachmentIds,
           ...modelPayload,
+          ...redactionModePayload(redactionEnabled),
           personaId: persona?.id,
           workflowId: pendingWorkflowId ?? undefined,
         }),
@@ -730,6 +750,7 @@ export function AssistantPage({
             | { type: 'tool_call'; id: string; name: string; args: unknown }
             | { type: 'tool_result'; id: string; name: string; result: unknown }
             | { type: 'tool_error'; id: string; name: string; error: string }
+            | { type: 'context_redaction'; summary: ContextRedactionSummary }
             | { type: 'done' }
             | { type: 'error'; message: string };
 
@@ -843,6 +864,14 @@ export function AssistantPage({
                 );
                 return { ...message, toolEvents: events };
               }),
+            );
+          } else if (payload.type === 'context_redaction') {
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId
+                  ? { ...message, redactionSummary: payload.summary }
+                  : message,
+              ),
             );
           } else if (payload.type === 'error') {
             setError(payload.message);
@@ -1151,6 +1180,12 @@ export function AssistantPage({
                   defaultModelId={defaultModel}
                   onSelectModel={setSelectedModel}
                   disabled={isStreaming}
+                />
+                <RedactionToggle
+                  enabled={redactionEnabled}
+                  onChange={setRedactionEnabled}
+                  disabled={isStreaming}
+                  className="h-7 font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/60 hover:bg-foreground/[0.04] hover:text-foreground"
                 />
                 <p className="ml-3 hidden font-mono text-[10px] uppercase tracking-[0.10em] text-foreground/35 sm:inline">
                   ↵ sends · ⇧↵ newline

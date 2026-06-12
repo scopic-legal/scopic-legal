@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   AppShellContent,
+  Alert,
+  AlertDescription,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -23,6 +26,7 @@ import {
   EmptyState,
   EmptyStateDescription,
   EmptyStateTitle,
+  EyeOff,
   FileText,
   Folder,
   FolderOpen,
@@ -68,6 +72,33 @@ import { useWorkflows } from '../hooks/use-workflows.js';
 
 const ROOT = '__root__';
 const DRAG_MIME = 'application/scopic-matter+json';
+
+interface RedactionSummary {
+  total: number;
+  byType: Record<string, number>;
+  bySource: Record<string, number>;
+}
+
+interface RedactionReportDocument {
+  fileId: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  status: 'scanned' | 'error';
+  summary: RedactionSummary;
+  provider: 'presidio' | 'local' | 'hybrid';
+  warning?: string;
+  error?: string;
+}
+
+interface RedactionReport {
+  generatedAt: number;
+  documents: RedactionReportDocument[];
+  summary: RedactionSummary;
+  mode: 'auto' | 'always' | 'off';
+  presidio: { configured: boolean };
+  skipped: number;
+}
 
 interface DragPayload {
   kind: 'doc' | 'folder';
@@ -497,6 +528,160 @@ function DeleteFolderDialog({ folder, contents, onClose, onConfirm }: DeleteFold
   );
 }
 
+function entityLabel(type: string): string {
+  return type
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function topEntityTypes(summary: RedactionSummary, limit = 6): Array<[string, number]> {
+  return Object.entries(summary.byType)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit);
+}
+
+interface RedactionReportDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  report: RedactionReport | null;
+  loading: boolean;
+  error: string | null;
+  onScan: () => Promise<void>;
+}
+
+function RedactionReportDialog({
+  open,
+  onOpenChange,
+  report,
+  loading,
+  error,
+  onScan,
+}: RedactionReportDialogProps) {
+  const topTypes = report ? topEntityTypes(report.summary, 8) : [];
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Context privacy scan</DialogTitle>
+          <DialogDescription>
+            Sensitive spans found across this matter.
+          </DialogDescription>
+        </DialogHeader>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {!report && !loading ? (
+          <div className="rounded-md border border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
+            No scan yet.
+          </div>
+        ) : null}
+
+        {loading ? (
+          <LoadingState variant="block">Scanning matter context...</LoadingState>
+        ) : report ? (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md border border-border px-3 py-2">
+                <div className="text-xs text-muted-foreground">Sensitive spans</div>
+                <div className="mt-1 text-2xl font-semibold">{report.summary.total}</div>
+              </div>
+              <div className="rounded-md border border-border px-3 py-2">
+                <div className="text-xs text-muted-foreground">Documents scanned</div>
+                <div className="mt-1 text-2xl font-semibold">{report.documents.length}</div>
+              </div>
+              <div className="rounded-md border border-border px-3 py-2">
+                <div className="text-xs text-muted-foreground">Recognizer</div>
+                <div className="mt-1 text-sm font-medium">
+                  {report.presidio.configured ? 'Presidio + local' : 'Local legal policy'}
+                </div>
+              </div>
+            </div>
+
+            {topTypes.length > 0 && (
+              <div>
+                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Entity mix
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {topTypes.map(([type, count]) => (
+                    <Badge key={type} variant="outline">
+                      {entityLabel(type)} {count}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="max-h-[320px] overflow-y-auto rounded-md border border-border">
+              <ul className="divide-y divide-border">
+                {report.documents.map((doc) => {
+                  const docTypes = topEntityTypes(doc.summary, 4);
+                  return (
+                    <li key={doc.fileId} className="px-3 py-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{doc.name}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {doc.status === 'scanned'
+                              ? `${doc.summary.total} span${doc.summary.total === 1 ? '' : 's'}`
+                              : doc.error ?? 'scan failed'}
+                          </div>
+                        </div>
+                        <Badge variant={doc.status === 'scanned' ? 'outline' : 'destructive'}>
+                          {doc.provider}
+                        </Badge>
+                      </div>
+                      {docTypes.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {docTypes.map(([type, count]) => (
+                            <span
+                              key={type}
+                              className="rounded-sm bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                            >
+                              {entityLabel(type)} {count}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {doc.warning && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {doc.warning}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        ) : null}
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" disabled={loading}>
+              Close
+            </Button>
+          </DialogClose>
+          <PendingButton
+            type="button"
+            onClick={() => void onScan()}
+            pending={loading}
+            pendingLabel="Scanning"
+          >
+            <EyeOff className="size-4" aria-hidden />
+            Scan context
+          </PendingButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function formatRelative(ms: number): string {
   const diff = Date.now() - ms;
   const minutes = Math.round(diff / 60_000);
@@ -880,6 +1065,35 @@ export function MatterDetailPage() {
   const sidePanel = useSidePanel();
   const [compareOpen, setCompareOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [redactionOpen, setRedactionOpen] = useState(false);
+  const [redactionReport, setRedactionReport] = useState<RedactionReport | null>(null);
+  const [redactionLoading, setRedactionLoading] = useState(false);
+  const [redactionError, setRedactionError] = useState<string | null>(null);
+
+  async function runRedactionScan() {
+    if (!matterId) return;
+    setRedactionLoading(true);
+    setRedactionError(null);
+    try {
+      const res = await fetch(
+        `/api/matters/${encodeURIComponent(matterId)}/redaction/report`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        },
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || `Scan failed (${res.status})`);
+      }
+      const report = (await res.json()) as RedactionReport;
+      setRedactionReport(report);
+    } catch (err) {
+      setRedactionError(err instanceof Error ? err.message : 'Scan failed');
+    } finally {
+      setRedactionLoading(false);
+    }
+  }
 
   async function runCompare(input: { leftFileId: string; rightFileId: string }) {
     if (!matterId) return;
@@ -1032,6 +1246,24 @@ export function MatterDetailPage() {
           >
             <GitCompareArrows className="size-4" aria-hidden />
             Compare versions
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setRedactionOpen(true);
+              if (!redactionReport && !redactionLoading) {
+                void runRedactionScan();
+              }
+            }}
+            disabled={!matter || documents.length === 0}
+            title={
+              documents.length === 0
+                ? 'Upload documents to scan context'
+                : 'Scan matter context for sensitive entities'
+            }
+          >
+            <EyeOff className="size-4" aria-hidden />
+            Privacy scan
           </Button>
           <Button
             variant="outline"
@@ -1234,6 +1466,15 @@ export function MatterDetailPage() {
         onOpenChange={setCompareOpen}
         documents={documents}
         onSubmit={runCompare}
+      />
+
+      <RedactionReportDialog
+        open={redactionOpen}
+        onOpenChange={setRedactionOpen}
+        report={redactionReport}
+        loading={redactionLoading}
+        error={redactionError}
+        onScan={runRedactionScan}
       />
 
       <ShareDialog

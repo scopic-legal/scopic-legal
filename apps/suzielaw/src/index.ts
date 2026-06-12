@@ -123,6 +123,14 @@ import {
 import { draftChatTitle } from './chat-title.js';
 import { db } from './db.js';
 import {
+  RedactionService,
+  mergeSummaries,
+  redactStructuredValue,
+  shouldRedactForRequest,
+  type RedactionResult,
+  type RedactionSummary,
+} from './redaction.js';
+import {
   OLLAMA_DEFAULT_BASE_URL,
   OLLAMA_PROVIDER_ID,
   fetchOllamaModelCapabilities,
@@ -138,6 +146,11 @@ const approvals = new ApprovalQueue({ store: new InMemoryApprovalStore() });
 const fileStore = new InMemoryFileStore({ dataDir: config.files.dir });
 const docStore = new InMemoryDocumentStore();
 const tokenBudget = new TokenBudgetStore(db, config.tokenBudget.defaultLimit);
+const redaction = new RedactionService({
+  analyzerUrl: config.redaction.analyzerUrl,
+  scoreThreshold: config.redaction.scoreThreshold,
+  enabledEntities: config.redaction.entities,
+});
 const OLLAMA_LOCAL_MODEL: LocalModel = {
   id: OLLAMA_PROVIDER_ID,
   name: 'Ollama (Local)',
@@ -304,6 +317,54 @@ function activeTools(): AnyToolDefinition[] {
   const out: AnyToolDefinition[] = [...builtInTools, ...legalResearchTools, ...templateTools, ...mcp.tools];
   if (kbSearchTool) out.push(kbSearchTool as unknown as AnyToolDefinition);
   return out;
+}
+
+function wrapToolsWithRedaction(
+  tools: AnyToolDefinition[],
+  redactText: (text: string) => Promise<RedactionResult>,
+): AnyToolDefinition[] {
+  return tools.map((tool) => {
+    if (typeof tool.execute !== 'function') return tool;
+    const execute = tool.execute.bind(tool);
+    return {
+      ...tool,
+      async execute(args: unknown, ctx: ToolContext) {
+        const result = await execute(args, ctx);
+        return redactStructuredValue(result, redactText);
+      },
+    } as AnyToolDefinition;
+  });
+}
+
+async function redactChatMessages(messages: ChatMessage[]): Promise<{
+  messages: ChatMessage[];
+  summary: RedactionSummary;
+}> {
+  const summaries: RedactionSummary[] = [];
+  const redacted: ChatMessage[] = [];
+  for (const message of messages) {
+    const content = typeof message.content === 'string' ? message.content : '';
+    if (!content) {
+      redacted.push(message);
+      continue;
+    }
+    const result = await redaction.redactText(content);
+    summaries.push(result.summary);
+    redacted.push({ ...message, content: result.text });
+  }
+  return { messages: redacted, summary: mergeSummaries(summaries) };
+}
+
+function redactionSystemPrompt(summary: RedactionSummary): string {
+  if (summary.total === 0) return '';
+  const topTypes = Object.entries(summary.byType)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([type, count]) => `${type}:${count}`)
+    .join(', ');
+  return `
+
+Scopic's context redaction guard masked ${summary.total} sensitive span(s) before this model call${topTypes ? ` (${topTypes})` : ''}. Treat bracketed "[... REDACTED]" placeholders as intentional client/matter privacy controls. Reason from roles, clauses, dates, and citations without trying to reconstruct the hidden values.`;
 }
 
 async function bootstrapTemplates(): Promise<void> {
@@ -661,6 +722,36 @@ app.use(
   requireMatterAccess,
 );
 
+app.post('/api/matters/:matterId/redaction/report', requireAuth, async (req, res) => {
+  const matterId = String(req.params.matterId ?? '');
+  const matter = workspaces.getWorkspace(matterId);
+  if (!matter) {
+    res.status(404).json({ error: 'matter not found' });
+    return;
+  }
+  const docs = workspaces.listDocuments(matterId, {});
+  const records: FileRecord[] = [];
+  for (const doc of docs) {
+    const rec = fileStore.get(matterId, doc.externalDocId);
+    if (rec) records.push(rec);
+  }
+  try {
+    const report = await redaction.scanDocuments(records, {
+      markitdownBaseUrl: config.markitdown.baseUrl,
+    });
+    res.json({
+      ...report,
+      mode: config.redaction.mode,
+      presidio: { configured: redaction.configuredWithPresidio },
+      skipped: docs.length - records.length,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'redaction scan failed',
+    });
+  }
+});
+
 app.use(
   '/api/matters/:matterId/members',
   requireAuth,
@@ -831,6 +922,8 @@ const reviewRunAdapter = buildReviewRunAdapter({
   extraBody: config.agent.extraBody,
   tokenBudget,
   fallbackTokensPerCall: config.tokenBudget.fallbackTokensPerCall,
+  redactionMode: config.redaction.mode,
+  redactionService: redaction,
   resolveTarget: resolveReviewLlmTarget,
 });
 app.use(
@@ -1142,6 +1235,11 @@ app.get('/api/health', async (_req, res) => {
       kb: config.kb.enabled
         ? { enabled: true, ...kbStore.count(null) }
         : { enabled: false },
+      redaction: {
+        mode: config.redaction.mode,
+        provider: redaction.configuredWithPresidio ? 'presidio' : 'local',
+        scoreThreshold: config.redaction.scoreThreshold,
+      },
       modelAgents: Object.fromEntries(
         Object.entries(config.modelAgents).map(([id, t]) => [id, { baseUrl: t.baseUrl }]),
       ),
@@ -1178,6 +1276,11 @@ app.get('/api/health', async (_req, res) => {
       kb: config.kb.enabled
         ? { enabled: true, ...kbStore.count(null) }
         : { enabled: false },
+      redaction: {
+        mode: config.redaction.mode,
+        provider: redaction.configuredWithPresidio ? 'presidio' : 'local',
+        scoreThreshold: config.redaction.scoreThreshold,
+      },
       modelAgents: Object.fromEntries(
         Object.entries(config.modelAgents).map(([id, t]) => [id, { baseUrl: t.baseUrl }]),
       ),
@@ -1360,6 +1463,14 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   overlayBYOK(effectiveModel);
   overlayBYOK(config.agent.simpleModel);
   const agent = resolveAgentTarget(effectiveModel, userRegistry, config.agent);
+  const redactForModel = shouldRedactForRequest({
+    requestedMode: req.body?.redactionMode,
+    configuredMode: config.redaction.mode,
+    targetBaseUrl: agent.baseUrl,
+  });
+  const redactTextForTurn = redactForModel
+    ? redaction.redactText.bind(redaction)
+    : undefined;
   const countHostedTokens =
     !!ownerEmail &&
     agent.baseUrl === config.agent.baseUrl &&
@@ -1473,7 +1584,20 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     ? `${attachmentContext}\n\n${citationProtocol}\n\n[Message]\n${message}`
     : message;
 
-  const messages: ChatMessage[] = [...history, { role: 'user', content: userContent }];
+  let messages: ChatMessage[] = [...history, { role: 'user', content: userContent }];
+  let redactionSummary = mergeSummaries([]);
+  if (redactForModel) {
+    const redacted = await redactChatMessages(messages);
+    messages = redacted.messages;
+    redactionSummary = redacted.summary;
+    if (redactionSummary.total > 0) {
+      send({
+        type: 'context_redaction',
+        summary: redactionSummary,
+        provider: redaction.configuredWithPresidio ? 'presidio' : 'local',
+      });
+    }
+  }
 
   // Per-turn document tools (lazy convert, navigate, draft, export). Only
   // appears when markitdown-agent is configured; otherwise just nav/draft on
@@ -1490,6 +1614,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     fileStore,
     docStore,
     markitdownBaseUrl: config.markitdown.baseUrl,
+    redactText: redactTextForTurn,
   });
   const diffTools = buildDiffTools({
     sessionId: docToolsSession,
@@ -1563,6 +1688,14 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   });
   turnConfig.tools = overridden.tools;
   turnConfig.systemPrompt = overridden.systemPrompt;
+
+  const redactionPrompt = redactionSystemPrompt(redactionSummary);
+  if (redactionPrompt) {
+    turnConfig.systemPrompt = appendSystemPrompt(turnConfig.systemPrompt, redactionPrompt);
+  }
+  if (redactTextForTurn) {
+    turnConfig.tools = wrapToolsWithRedaction(turnConfig.tools, redactTextForTurn);
+  }
 
   if (isOllamaRequest && !(await selectedOllamaModelSupportsTools(agent))) {
     turnConfig.tools = [];

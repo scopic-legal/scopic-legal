@@ -19,6 +19,11 @@ import type { InMemoryFileStore } from './files.js';
 import { convertFileToMarkdown } from './document-tools.js';
 import { createTokenMeteredFetch, type TokenBudgetStore } from '@teamsuzie/hosted-demo';
 import { getSessionUser } from './auth.js';
+import {
+  shouldRedactForRequest,
+  type RedactionMode,
+  type RedactionService,
+} from './redaction.js';
 
 export interface BuildReviewRunAdapterOptions {
   fileStore: InMemoryFileStore;
@@ -44,6 +49,8 @@ export interface BuildReviewRunAdapterOptions {
   topK?: number;
   tokenBudget?: TokenBudgetStore;
   fallbackTokensPerCall?: number;
+  redactionMode?: RedactionMode;
+  redactionService?: RedactionService;
   resolveTarget?: (input: {
     request: Request | undefined;
     modelId: string;
@@ -92,6 +99,16 @@ export function buildReviewRunAdapter(
     });
 
     const ownerEmail = expressRequest ? getSessionUser(expressRequest)?.email : null;
+    const redactForModel =
+      !!opts.redactionService &&
+      shouldRedactForRequest({
+        requestedMode: body?.redactionMode,
+        configuredMode: opts.redactionMode ?? 'auto',
+        targetBaseUrl: cellTarget.baseUrl,
+      });
+    const redactText = redactForModel
+      ? (text: string) => opts.redactionService!.redactText(text)
+      : null;
     const cellFetch =
       opts.tokenBudget && ownerEmail
         ? createTokenMeteredFetch({
@@ -171,17 +188,28 @@ export function buildReviewRunAdapter(
           };
           prepared = synthesizePrepared(document.externalDocId, []);
         } else {
+          const redactedHits = redactText
+            ? await Promise.all(
+                hits.map(async (hit) => ({
+                  ...hit,
+                  chunk: {
+                    ...hit.chunk,
+                    content: (await redactText(hit.chunk.content)).text,
+                  },
+                })),
+              )
+            : hits;
           yield {
             type: 'retrieved',
-            summary: `Retrieved ${hits.length} passage${hits.length === 1 ? '' : 's'} from ${document.name}`,
-            chunkCount: hits.length,
-            chunks: hits.map((h) => ({
+            summary: `Retrieved ${redactedHits.length} passage${redactedHits.length === 1 ? '' : 's'} from ${document.name}${redactForModel ? ' with redaction guard' : ''}`,
+            chunkCount: redactedHits.length,
+            chunks: redactedHits.map((h) => ({
               content: h.chunk.content,
               distance: h.distance,
             })),
             retrievalQuery,
           };
-          prepared = synthesizePrepared(document.externalDocId, hits);
+          prepared = synthesizePrepared(document.externalDocId, redactedHits);
         }
       } else {
         // Legacy full-doc fallback.
@@ -199,9 +227,10 @@ export function buildReviewRunAdapter(
           type: 'retrieved',
           summary: `Indexing not ready — using full document ${document.name}`,
         };
-        const markdown = await convertFileToMarkdown(record, {
+        const rawMarkdown = await convertFileToMarkdown(record, {
           markitdownBaseUrl: opts.markitdownBaseUrl,
         });
+        const markdown = redactText ? (await redactText(rawMarkdown)).text : rawMarkdown;
         prepared = prepareDocumentForPrompt(markdown, [], {
           handle: document.externalDocId,
         });

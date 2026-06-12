@@ -47,6 +47,11 @@ interface HealthResponse {
     error?: string;
   };
   kb?: { enabled: boolean; documents?: number; chunks?: number };
+  redaction?: {
+    mode: 'auto' | 'always' | 'off';
+    provider: 'presidio' | 'local';
+    scoreThreshold: number;
+  };
   modelAgents?: Record<string, { baseUrl: string }>;
   cloudProviders?: { id: string; label: string; modelIds: string[]; hint?: string; keyUrl?: string }[];
   demo?: { email: string; password: string };

@@ -8,6 +8,7 @@ import {
 import type { AnyToolDefinition } from '@teamsuzie/agent-loop';
 import type { InMemoryFileStore, FileRecord } from './files.js';
 import { convertToMarkdown } from './document-conversion.js';
+import type { RedactTextFn } from './redaction.js';
 
 /**
  * Convert a session-stored binary file (DOCX directly via mammoth, anything
@@ -49,6 +50,8 @@ interface BuildOptions {
   docStore: InMemoryDocumentStore;
   /** markitdown-agent base URL, e.g. `http://localhost:3013`. Empty string disables conversion tools. */
   markitdownBaseUrl: string;
+  /** Optional outbound-context redactor used before converted text reaches the model. */
+  redactText?: RedactTextFn;
 }
 
 /**
@@ -73,7 +76,7 @@ interface BuildOptions {
  * but other binary types and DOCX export are unavailable.
  */
 export function buildDocumentTools(opts: BuildOptions): AnyToolDefinition[] {
-  const { sessionId, fileStore, docStore, markitdownBaseUrl } = opts;
+  const { sessionId, fileStore, docStore, markitdownBaseUrl, redactText } = opts;
 
   const convertTool: AnyToolDefinition = {
     name: 'convert_to_markdown',
@@ -94,7 +97,8 @@ export function buildDocumentTools(opts: BuildOptions): AnyToolDefinition[] {
       const record = fileStore.get(sessionId, args.file_id);
       if (!record) throw new Error(`file_id not found in session: ${args.file_id}`);
 
-      const markdown = await convertFileToMarkdown(record, { markitdownBaseUrl });
+      const rawMarkdown = await convertFileToMarkdown(record, { markitdownBaseUrl });
+      const markdown = redactText ? (await redactText(rawMarkdown)).text : rawMarkdown;
       const doc = new MarkdownDocument(markdown, record.name);
       const docId = docStore.put(sessionId, doc);
       return {
