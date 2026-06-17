@@ -14,8 +14,8 @@ for (const [key, value] of Object.entries(process.env)) {
 }
 
 const SKILL_VAR_PREFIX = 'SCOPIC_SKILL_VAR_';
-const DEFAULT_QWEN_MODEL = 'qwen3.6-plus';
-const DEFAULT_QWEN_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode';
+const DEFAULT_HOSTED_MODEL = 'gemini-3.5-flash';
+const DEFAULT_HOSTED_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
 function collectSkillRenderContext(): Record<string, string> {
@@ -99,9 +99,9 @@ export const config = {
   agent: {
     name: process.env.SCOPIC_AGENT_NAME || 'Counsel',
     description: process.env.SCOPIC_AGENT_DESCRIPTION || 'Open-source legal assistant',
-    baseUrl: (process.env.SCOPIC_AGENT_BASE_URL || DEFAULT_QWEN_BASE_URL).replace(/\/$/, ''),
+    baseUrl: (process.env.SCOPIC_AGENT_BASE_URL || DEFAULT_HOSTED_BASE_URL).replace(/\/$/, ''),
     apiKey: process.env.SCOPIC_AGENT_API_KEY || undefined,
-    model: process.env.SCOPIC_MODEL || DEFAULT_QWEN_MODEL,
+    model: process.env.SCOPIC_MODEL || DEFAULT_HOSTED_MODEL,
     /**
      * Cheaper / faster model for narrow tasks (review cell runs, future
      * auto-titling, etc.). Falls back to the primary `model` when unset
@@ -110,9 +110,9 @@ export const config = {
     simpleModel:
       process.env.SCOPIC_MODEL_SIMPLE ||
       process.env.SCOPIC_MODEL ||
-      DEFAULT_QWEN_MODEL,
+      DEFAULT_HOSTED_MODEL,
     /** JSON object merged into every chat request body (e.g. {"enable_thinking":false} for Qwen). */
-    extraBody: parseJsonObject(process.env.SCOPIC_AGENT_EXTRA_BODY) || defaultExtraBody(process.env.SCOPIC_MODEL || DEFAULT_QWEN_MODEL),
+    extraBody: parseJsonObject(process.env.SCOPIC_AGENT_EXTRA_BODY) || defaultExtraBody(process.env.SCOPIC_MODEL || DEFAULT_HOSTED_MODEL),
     /** Counsel identity / behavior. Override SCOPIC_SYSTEM_PROMPT in env for short overrides; edit config.ts for longer. */
     systemPrompt: process.env.SCOPIC_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT,
   },
@@ -149,6 +149,7 @@ export const config = {
     ollama: {
       baseUrl: normalizeOpenAICompatibleBaseUrl(process.env.SCOPIC_OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL),
       apiKey: process.env.SCOPIC_OLLAMA_API_KEY || undefined,
+      extraBody: {},
     },
   },
   personas: {

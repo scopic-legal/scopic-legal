@@ -21,8 +21,8 @@ Set in `.env`. Same shape as upstream `starter-chat`'s env, with `STARTER_CHAT_`
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SCOPIC_AGENT_BASE_URL` | `https://dashscope-intl.aliyuncs.com/compatible-mode` | OpenAI-compatible base URL |
-| `SCOPIC_MODEL` | `qwen3.6-plus` | Model string sent to `/v1/chat/completions` (must support tool use) |
+| `SCOPIC_AGENT_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` | OpenAI-compatible base URL |
+| `SCOPIC_MODEL` | `gemini-3.5-flash` | Model string sent to `/v1/chat/completions` (must support tool use) |
 | `SCOPIC_AGENT_API_KEY` | — | Bearer token for the model provider |
 | `SCOPIC_GOOGLE_CLIENT_ID` / `SCOPIC_GOOGLE_CLIENT_SECRET` | — | Enables the Google sign-in button |
 | `SCOPIC_PORT` / `SCOPIC_CLIENT_PORT` | `17501` / `17502` | Backend / frontend ports |

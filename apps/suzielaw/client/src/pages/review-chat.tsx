@@ -39,6 +39,7 @@ import {
   redactionModePayload,
   useRedactionPreference,
 } from '../hooks/use-redaction-preference.js';
+import { ReasoningPanel } from '../components/reasoning-panel.js';
 import {
   TrackedChangesPanel,
   type ProposeEditsResult,
@@ -55,6 +56,7 @@ interface UiMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
   toolEvents?: ToolEvent[];
   redactionSummary?: ContextRedactionSummary;
   parsed?: { text: string; citations: Citation[] };
@@ -139,8 +141,9 @@ function TypingDots() {
 function MessageItem({ message, agentName, isActive, onJump, docLabels, chatId }: MessageItemProps) {
   const isUser = message.role === 'user';
   const hasToolEvents = !!message.toolEvents && message.toolEvents.length > 0;
+  const hasReasoning = !!message.reasoning?.trim();
   const showTyping =
-    !isUser && isActive && message.content.length === 0 && !hasToolEvents;
+    !isUser && isActive && message.content.length === 0 && !hasToolEvents && !hasReasoning;
   const proposeResults = isUser ? [] : proposeEditsResults(message);
 
   if (isUser) {
@@ -173,15 +176,22 @@ function MessageItem({ message, agentName, isActive, onJump, docLabels, chatId }
         <div className="text-sm leading-relaxed">
           <TypingDots />
         </div>
-      ) : message.parsed ? (
-        <CitedMarkdownMessage
-          content={message.parsed.text}
-          citations={message.parsed.citations}
-          docLabels={docLabels}
-          onJump={onJump}
-        />
       ) : (
-        liveText && liveText.length > 0 && <MarkdownMessage content={liveText} />
+        <>
+          {hasReasoning && (
+            <ReasoningPanel text={message.reasoning!} active={isActive && !message.parsed} />
+          )}
+          {message.parsed ? (
+            <CitedMarkdownMessage
+              content={message.parsed.text}
+              citations={message.parsed.citations}
+              docLabels={docLabels}
+              onJump={onJump}
+            />
+          ) : (
+            liveText && liveText.length > 0 && <MarkdownMessage content={liveText} />
+          )}
+        </>
       )}
       {isActive && hasToolEvents && <ToolUseStatus events={message.toolEvents!} />}
       {proposeResults.map((result) => (
@@ -400,6 +410,7 @@ export function ReviewChatPage({ defaultModel }: ReviewChatPageProps) {
           if (!line) continue;
           const payload = JSON.parse(line.slice(6)) as
             | { type: 'chunk'; text: string }
+          | { type: 'reasoning'; text: string }
           | { type: 'tool_call'; id: string; name: string; args: unknown }
           | { type: 'tool_result'; id: string; name: string; result: unknown }
           | { type: 'tool_error'; id: string; name: string; error: string }
@@ -411,6 +422,14 @@ export function ReviewChatPage({ defaultModel }: ReviewChatPageProps) {
             setMessages((cur) =>
               cur.map((m) =>
                 m.id === assistantId ? { ...m, content: m.content + payload.text } : m,
+              ),
+            );
+          } else if (payload.type === 'reasoning') {
+            setMessages((cur) =>
+              cur.map((m) =>
+                m.id === assistantId
+                  ? { ...m, reasoning: (m.reasoning ?? '') + payload.text }
+                  : m,
               ),
             );
           } else if (payload.type === 'tool_call') {

@@ -111,7 +111,7 @@ End-to-end manual test pass for every user-facing feature. Run after a clean reb
 
 ## 13 — Settings — model picker
 
-- [ ] Default model loads from server (`health.agent.model`, e.g. `qwen3.6-plus`).
+- [ ] Default model loads from server (`health.agent.model`, e.g. `gemini-3.5-flash`).
 - [ ] **Without a BYOK key**, only the default cloud model + local models are visible.
 - [ ] Add a key for **OpenAI** in the Provider Keys card → GPT-5.5 row becomes visible. Pick it → next chat reply routes via OpenAI.
 - [ ] Add a key for **DashScope** → Qwen 3.6-Plus row visible.

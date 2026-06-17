@@ -7,7 +7,7 @@ import {
   wireModelIdFor,
 } from '../cloud-providers.js';
 
-const defaultQwenAgent = {
+const dashscopeQwenAgent = {
   baseUrl: 'https://dashscope-intl.aliyuncs.com/compatible-mode',
   apiKey: 'demo-key',
   model: 'qwen3.6-plus',
@@ -36,11 +36,29 @@ describe('cloud provider BYOK routing', () => {
           extraBody: extraBodyForProvider(provider!),
         },
       },
-      defaultQwenAgent,
+      dashscopeQwenAgent,
     );
 
     expect(agent.baseUrl).toBe('https://api.openai.com');
     expect(agent.model).toBe('gpt-5.5');
+    expect(agent.extraBody).toEqual({});
+  });
+
+  it('clears inherited provider body fields for Ollama routes', () => {
+    const agent = resolveAgentTarget(
+      'gemma3:12b',
+      {
+        'gemma3:12b': {
+          baseUrl: 'http://localhost:11434',
+          model: 'gemma3:12b',
+          extraBody: {},
+        },
+      },
+      dashscopeQwenAgent,
+    );
+
+    expect(agent.baseUrl).toBe('http://localhost:11434');
+    expect(agent.model).toBe('gemma3:12b');
     expect(agent.extraBody).toEqual({});
   });
 

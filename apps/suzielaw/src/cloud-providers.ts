@@ -156,7 +156,7 @@ export const CLOUD_PROVIDERS: CloudProvider[] = [
  * Returns the provider that owns this model id, or null. Prefix-based: any id
  * shaped `<prefix>/<model>` routes to the provider whose `modelPrefix` matches,
  * so models newer than this code still resolve. Falls back to exact membership
- * for bare ids (e.g. the default `qwen3.6-plus`).
+ * for bare provider ids (e.g. `qwen3.6-plus`).
  */
 export function providerForModel(modelId: string): CloudProvider | null {
   for (const p of CLOUD_PROVIDERS) {

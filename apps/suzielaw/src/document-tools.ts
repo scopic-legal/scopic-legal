@@ -5,6 +5,7 @@ import {
   documentNavigationTools,
   isDocxMimeType,
 } from '@teamsuzie/markdown-document';
+import { generateDocx, type GenerateDocxSection } from '@teamsuzie/docx';
 import type { AnyToolDefinition } from '@teamsuzie/agent-loop';
 import type { InMemoryFileStore, FileRecord } from './files.js';
 import { convertToMarkdown } from './document-conversion.js';
@@ -41,6 +42,136 @@ export async function convertFileToMarkdown(
     markitdownAgentBaseUrl: opts.markitdownBaseUrl,
   });
   return markdown;
+}
+
+function finalDocxName(filename: string): string {
+  const trimmed = filename.trim() || 'document';
+  return trimmed.toLowerCase().endsWith('.docx') ? trimmed : `${trimmed}.docx`;
+}
+
+function titleFromFilename(filename: string): string {
+  const withoutExt = filename.replace(/\.docx$/i, '');
+  return withoutExt.replace(/[_-]+/g, ' ').trim() || 'Document';
+}
+
+function cleanMarkdownText(value: string): string {
+  return value
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
+    .replace(/([*_~`]){1,3}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isHeading(line: string): boolean {
+  return /^(#{1,6})\s+(.+?)\s*#*\s*$/.test(line);
+}
+
+function parseHeading(line: string): { level: 1 | 2 | 3; text: string } | null {
+  const match = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+  if (!match) return null;
+  return {
+    level: Math.min(match[1].length, 3) as 1 | 2 | 3,
+    text: cleanMarkdownText(match[2]),
+  };
+}
+
+function isBulletLine(line: string): boolean {
+  return /^[-*•]\s+/.test(line.trim());
+}
+
+function isTableSeparator(line: string): boolean {
+  const cells = splitTableRow(line);
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+}
+
+function looksLikeTableStart(lines: string[], index: number): boolean {
+  return lines[index]?.includes('|') && isTableSeparator(lines[index + 1] ?? '');
+}
+
+function splitTableRow(line: string): string[] {
+  const trimmed = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  if (!trimmed.includes('|')) return [];
+  return trimmed.split('|').map((cell) => cleanMarkdownText(cell));
+}
+
+function ensureSection(sections: GenerateDocxSection[]): GenerateDocxSection {
+  const last = sections[sections.length - 1];
+  if (last && !last.table) return last;
+  const next: GenerateDocxSection = {};
+  sections.push(next);
+  return next;
+}
+
+function ensureTableSection(sections: GenerateDocxSection[]): GenerateDocxSection {
+  const last = sections[sections.length - 1];
+  if (last && !last.table && !(last.paragraphs && last.paragraphs.length > 0)) {
+    return last;
+  }
+  const next: GenerateDocxSection = {};
+  sections.push(next);
+  return next;
+}
+
+export function markdownToDocxSections(markdown: string): GenerateDocxSection[] {
+  const lines = markdown.replace(/\r\n?/g, '\n').split('\n');
+  const sections: GenerateDocxSection[] = [];
+  let paragraphLines: string[] = [];
+
+  function flushParagraph(): void {
+    if (paragraphLines.length === 0) return;
+    const paragraph = cleanMarkdownText(paragraphLines.join(' '));
+    paragraphLines = [];
+    if (!paragraph) return;
+    const section = ensureSection(sections);
+    section.paragraphs = [...(section.paragraphs ?? []), paragraph];
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i] ?? '';
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushParagraph();
+      continue;
+    }
+
+    const heading = parseHeading(line);
+    if (heading) {
+      flushParagraph();
+      sections.push({ heading });
+      continue;
+    }
+
+    if (looksLikeTableStart(lines, i)) {
+      flushParagraph();
+      const headers = splitTableRow(lines[i]);
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length) {
+        const candidate = lines[i] ?? '';
+        if (!candidate.trim() || isHeading(candidate) || !candidate.includes('|')) {
+          i -= 1;
+          break;
+        }
+        rows.push(splitTableRow(candidate));
+        i += 1;
+      }
+      ensureTableSection(sections).table = { headers, rows };
+      continue;
+    }
+
+    if (isBulletLine(line)) {
+      flushParagraph();
+      const section = ensureSection(sections);
+      section.paragraphs = [...(section.paragraphs ?? []), line];
+      continue;
+    }
+
+    paragraphLines.push(line);
+  }
+
+  flushParagraph();
+  return sections;
 }
 
 interface BuildOptions {
@@ -111,6 +242,36 @@ export function buildDocumentTools(opts: BuildOptions): AnyToolDefinition[] {
     },
   };
 
+  async function exportDocxBytes(markdown: string, filename: string): Promise<Buffer> {
+    if (markitdownBaseUrl) {
+      try {
+        const response = await fetch(`${markitdownBaseUrl}/export/docx`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markdown, filename }),
+          signal: AbortSignal.timeout(120_000),
+        });
+        if (!response.ok) {
+          const text = await response.text().catch(() => '');
+          throw new Error(
+            `markitdown-agent /export/docx returned ${response.status}: ${text.slice(0, 200)}`,
+          );
+        }
+        return Buffer.from(await response.arrayBuffer());
+      } catch (err) {
+        console.warn(
+          '[document-tools] markitdown DOCX export failed; falling back to native exporter:',
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+
+    return generateDocx({
+      title: titleFromFilename(filename),
+      sections: markdownToDocxSections(markdown),
+    });
+  }
+
   // Closure captures sessionId; called by export_to_docx.
   const exportToDocx = async ({
     markdown,
@@ -120,21 +281,8 @@ export function buildDocumentTools(opts: BuildOptions): AnyToolDefinition[] {
     filename: string;
     docId: string;
   }) => {
-    const response = await fetch(`${markitdownBaseUrl}/export/docx`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ markdown, filename }),
-      signal: AbortSignal.timeout(120_000),
-    });
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(
-        `markitdown-agent /export/docx returned ${response.status}: ${text.slice(0, 200)}`,
-      );
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    const bytes = Buffer.from(arrayBuffer);
-    const finalName = filename.endsWith('.docx') ? filename : `${filename}.docx`;
+    const finalName = finalDocxName(filename);
+    const bytes = await exportDocxBytes(markdown, finalName);
     const fileId = `file_export_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
 
     const record: FileRecord = {
@@ -161,7 +309,7 @@ export function buildDocumentTools(opts: BuildOptions): AnyToolDefinition[] {
     ...documentDraftingTools({
       store: docStore,
       getSessionId: () => sessionId,
-      ...(markitdownBaseUrl ? { exportToDocx } : {}),
+      exportToDocx,
     }),
   ];
 }

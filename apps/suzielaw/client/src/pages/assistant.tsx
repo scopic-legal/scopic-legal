@@ -33,6 +33,7 @@ import {
   redactionModePayload,
   useRedactionPreference,
 } from '../hooks/use-redaction-preference.js';
+import { ReasoningPanel } from '../components/reasoning-panel.js';
 import {
   TrackedChangesPanel,
   type ProposeEditsResult,
@@ -49,6 +50,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
   toolEvents?: ToolEvent[];
   redactionSummary?: ContextRedactionSummary;
   /** Set on stream `done`: text-with-sentinel-stripped + extracted citations. */
@@ -184,8 +186,9 @@ function MessageItem({
 }) {
   const isUser = message.role === 'user';
   const hasToolEvents = !!message.toolEvents && message.toolEvents.length > 0;
+  const hasReasoning = !!message.reasoning?.trim();
   const showTyping =
-    !isUser && isActive && message.content.length === 0 && !hasToolEvents;
+    !isUser && isActive && message.content.length === 0 && !hasToolEvents && !hasReasoning;
   const proposeResults = isUser ? [] : proposeEditsResults(message);
 
   if (isUser) {
@@ -220,15 +223,22 @@ function MessageItem({
         <div className="text-[15px] leading-relaxed">
           <TypingDots />
         </div>
-      ) : message.parsed ? (
-        <CitedMarkdownMessage
-          content={message.parsed.text}
-          citations={message.parsed.citations}
-          docLabels={docLabels}
-          onJump={onJump}
-        />
       ) : (
-        liveText && liveText.length > 0 && <MarkdownMessage content={liveText} />
+        <>
+          {hasReasoning && (
+            <ReasoningPanel text={message.reasoning!} active={isActive && !message.parsed} />
+          )}
+          {message.parsed ? (
+            <CitedMarkdownMessage
+              content={message.parsed.text}
+              citations={message.parsed.citations}
+              docLabels={docLabels}
+              onJump={onJump}
+            />
+          ) : (
+            liveText && liveText.length > 0 && <MarkdownMessage content={liveText} />
+          )}
+        </>
       )}
       {/* Live tool-use indicator: appears below the message content while the
           turn is still streaming, disappears once the agent yields 'done'. */}
@@ -747,6 +757,7 @@ export function AssistantPage({
 
           const payload = JSON.parse(line.slice(6)) as
             | { type: 'chunk'; text: string }
+            | { type: 'reasoning'; text: string }
             | { type: 'tool_call'; id: string; name: string; args: unknown }
             | { type: 'tool_result'; id: string; name: string; result: unknown }
             | { type: 'tool_error'; id: string; name: string; error: string }
@@ -759,6 +770,14 @@ export function AssistantPage({
               current.map((message) =>
                 message.id === assistantId
                   ? { ...message, content: message.content + payload.text }
+                  : message,
+              ),
+            );
+          } else if (payload.type === 'reasoning') {
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId
+                  ? { ...message, reasoning: (message.reasoning ?? '') + payload.text }
                   : message,
               ),
             );

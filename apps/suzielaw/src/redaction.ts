@@ -141,7 +141,25 @@ const LOCAL_RECOGNIZERS: Array<{
   score: number;
   context?: RegExp;
   validate?: (match: string) => boolean;
+  span?: (match: RegExpExecArray) => { startOffset: number; endOffset: number };
 }> = [
+  {
+    entityType: 'PERSON',
+    pattern: /\b(?:Mr|Ms|Mrs|Mx|Dr|Prof|Judge|Justice)\.?\s+([A-Z][a-z]+(?:\s+(?:[A-Z]\.|[A-Z][a-z]+)){0,2})\b/g,
+    score: 0.78,
+    span: capturedGroupSpan(1),
+  },
+  {
+    entityType: 'PERSON',
+    pattern: /\b(?:client|plaintiff|defendant|employee|witness|attorney|lawyer|counsel|signatory|party|contact|manager|director|officer|partner)\s*(?:is|was|named|called|contact)?\s*:?\s*([A-Z][a-z]+(?:\s+(?:[A-Z]\.|[A-Z][a-z]+)){1,2})\b/g,
+    score: 0.72,
+    span: capturedGroupSpan(1),
+  },
+  {
+    entityType: 'PERSON',
+    pattern: /\b[A-Z][a-z]+(?:\s+(?:[A-Z]\.|[A-Z][a-z]+)){1,2}\b(?=\s+(?:emailed|called|signed|met|wrote|said|requested|agreed|testified|served|authorized|approved|reviewed)\b|[\s,]*(?:<[^>]+>|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}))/g,
+    score: 0.7,
+  },
   {
     entityType: 'EMAIL_ADDRESS',
     pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
@@ -192,7 +210,7 @@ const LOCAL_RECOGNIZERS: Array<{
   },
   {
     entityType: 'CLIENT_MATTER_ID',
-    pattern: /\b(?:client|matter)\s*(?:no\.?|number|#|id)?\s*[:#-]?\s*[A-Z0-9][A-Z0-9.-]{3,28}\b/gi,
+    pattern: /\b(?:client|matter)\s*(?:no\.?|number|#|id)\s*[:#-]?\s*[A-Z0-9][A-Z0-9.-]{3,28}\b/gi,
     score: 0.78,
   },
   {
@@ -324,10 +342,13 @@ export class RedactionService {
       recognizer.pattern.lastIndex = 0;
       let match: RegExpExecArray | null;
       while ((match = recognizer.pattern.exec(text)) !== null) {
-        const matched = match[0];
+        const rawMatched = match[0];
+        if (!rawMatched) continue;
+        const span = recognizer.span?.(match);
+        const start = match.index + (span?.startOffset ?? 0);
+        const end = match.index + (span?.endOffset ?? rawMatched.length);
+        const matched = text.slice(start, end);
         if (!matched) continue;
-        const start = match.index;
-        const end = start + matched.length;
         if (recognizer.context && !hasNearbyContext(text, start, end, recognizer.context)) {
           continue;
         }
@@ -546,6 +567,15 @@ function looksLikeCreditCard(value: string): boolean {
     doubleDigit = !doubleDigit;
   }
   return sum % 10 === 0;
+}
+
+function capturedGroupSpan(groupIndex: number): (match: RegExpExecArray) => { startOffset: number; endOffset: number } {
+  return (match) => {
+    const captured = match[groupIndex] ?? '';
+    const startOffset = match[0].indexOf(captured);
+    if (startOffset < 0) return { startOffset: 0, endOffset: match[0].length };
+    return { startOffset, endOffset: startOffset + captured.length };
+  };
 }
 
 function isLocalBaseUrl(baseUrl: string): boolean {

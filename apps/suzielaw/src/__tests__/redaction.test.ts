@@ -29,6 +29,20 @@ describe('redaction policy', () => {
     expect(result.summary.byType.CASE_NUMBER).toBe(1);
   });
 
+  it('masks common client and attorney names without Presidio', async () => {
+    const service = new RedactionService({ scoreThreshold: 0.55 });
+
+    const result = await service.redactText(
+      'Jane Doe emailed jane@example.com. Attorney John Q. Public signed. Client: Mary Smith called.',
+    );
+
+    expect(result.text).not.toContain('Jane Doe');
+    expect(result.text).not.toContain('John Q. Public');
+    expect(result.text).not.toContain('Mary Smith');
+    expect(result.text).toContain('[PERSON REDACTED] emailed [EMAIL REDACTED].');
+    expect(result.summary.byType.PERSON).toBe(3);
+  });
+
   it('combines Presidio analyzer findings with local recognizers', async () => {
     globalThis.fetch = vi.fn(async () =>
       new Response(

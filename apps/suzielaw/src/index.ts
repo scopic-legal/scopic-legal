@@ -138,6 +138,7 @@ import {
   normalizeOpenAICompatibleBaseUrl,
   ollamaModelSupportsTools,
 } from './ollama-models.js';
+import { runOllamaChatOnlyTurn } from './ollama-chat.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDistDir = path.resolve(__dirname, '../client/dist');
@@ -1433,6 +1434,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     userRegistry[requestedModelRaw] = {
       ...ollamaTarget,
       model: requestedModelRaw,
+      extraBody: {},
     };
   }
   // BYOK overlay: for any model that maps to a known cloud provider AND
@@ -1697,12 +1699,14 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     turnConfig.tools = wrapToolsWithRedaction(turnConfig.tools, redactTextForTurn);
   }
 
+  let useNativeOllamaChat = false;
   if (isOllamaRequest && !(await selectedOllamaModelSupportsTools(agent))) {
     turnConfig.tools = [];
     turnConfig.systemPrompt = appendSystemPrompt(
       turnConfig.systemPrompt,
       OLLAMA_NO_TOOLS_SYSTEM_PROMPT,
     );
+    useNativeOllamaChat = true;
   }
 
   // Accumulators so we can persist the assistant turn into chat_messages
@@ -1712,26 +1716,36 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   const collectedToolEvents: unknown[] = [];
 
   try {
-    for await (const event of runChatTurn({
-      agent,
-      messages,
-      tools: turnConfig.tools,
-      toolCtx,
-      systemPrompt: turnConfig.systemPrompt,
-      maxIterations: config.tools.maxIterations,
-      fetchImpl:
-        ownerEmail && countHostedTokens
-          ? createTokenMeteredFetch({
-              budget: tokenBudget,
-              ownerEmail,
-              source: 'chat',
-              model: agent.model,
-              enabled: true,
-              fallbackTokens: config.tokenBudget.fallbackTokensPerCall,
-            })
-          : fetch,
-      signal: abort.signal,
-    })) {
+    const stream = useNativeOllamaChat
+      ? runOllamaChatOnlyTurn({
+          agent,
+          messages,
+          systemPrompt: turnConfig.systemPrompt,
+          fetchImpl: fetch,
+          signal: abort.signal,
+        })
+      : runChatTurn({
+          agent,
+          messages,
+          tools: turnConfig.tools,
+          toolCtx,
+          systemPrompt: turnConfig.systemPrompt,
+          maxIterations: config.tools.maxIterations,
+          fetchImpl:
+            ownerEmail && countHostedTokens
+              ? createTokenMeteredFetch({
+                  budget: tokenBudget,
+                  ownerEmail,
+                  source: 'chat',
+                  model: agent.model,
+                  enabled: true,
+                  fallbackTokens: config.tokenBudget.fallbackTokensPerCall,
+                })
+              : fetch,
+          signal: abort.signal,
+        });
+
+    for await (const event of stream) {
       send(event);
       if (persistedChat) {
         if (event.type === 'chunk') {
