@@ -1,5 +1,6 @@
 import type { FileRecord } from './files.js';
 import { convertFileToMarkdown } from './document-tools.js';
+import type { OpenAiPdfFallbackOptions } from './document-conversion.js';
 
 export type RedactionMode = 'auto' | 'always' | 'off';
 export type RedactionSource = 'presidio' | 'local';
@@ -92,6 +93,7 @@ const DEFAULT_ENTITY_ALLOWLIST = new Set([
   'ACCOUNT_NUMBER',
   'ADDRESS',
   'DOB',
+  'ORGANIZATION',
 ]);
 
 const PRESIDIO_SUPPORTED_ENTITIES = new Set([
@@ -115,6 +117,7 @@ const PRESIDIO_SUPPORTED_ENTITIES = new Set([
   'UK_NHS',
   'AU_ABN',
   'AU_ACN',
+  'ORGANIZATION',
 ]);
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -133,6 +136,7 @@ const ENTITY_LABELS: Record<string, string> = {
   CASE_NUMBER: 'CASE NUMBER',
   DOCKET_NUMBER: 'DOCKET NUMBER',
   DOB: 'DOB',
+  ORGANIZATION: 'PARTY',
 };
 
 const LOCAL_RECOGNIZERS: Array<{
@@ -159,6 +163,23 @@ const LOCAL_RECOGNIZERS: Array<{
     entityType: 'PERSON',
     pattern: /\b[A-Z][a-z]+(?:\s+(?:[A-Z]\.|[A-Z][a-z]+)){1,2}\b(?=\s+(?:emailed|called|signed|met|wrote|said|requested|agreed|testified|served|authorized|approved|reviewed)\b|[\s,]*(?:<[^>]+>|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}))/g,
     score: 0.7,
+  },
+  {
+    entityType: 'PERSON',
+    pattern: /\b(?:between|by and between|with|against|from|to|for|employee|employer|landlord|tenant|buyer|seller|borrower|lender|signatory|undersigned)\s+([A-Z][a-z]+(?:\s+(?:[A-Z]\.|[A-Z][a-z]+)){1,3})\b/g,
+    score: 0.74,
+    span: capturedGroupSpan(1),
+  },
+  {
+    entityType: 'PERSON',
+    pattern: /\b([A-Z][a-z]+(?:\s+(?:[A-Z]\.|[A-Z][a-z]+)){1,3})\b(?=,?\s+(?:an individual|a natural person|residing at|of \d{1,6}\s+[A-Z]))/g,
+    score: 0.74,
+    span: capturedGroupSpan(1),
+  },
+  {
+    entityType: 'ORGANIZATION',
+    pattern: /\b[A-Z][A-Za-z0-9&'.-]*(?:\s+[A-Z][A-Za-z0-9&'.-]*){0,8}\s+(?:LLC|L\.L\.C\.|Inc\.?|Incorporated|Ltd\.?|Limited|Corp\.?|Corporation|Company|Co\.?|PLC|LLP|L\.L\.P\.|LP|L\.P\.|GmbH|S\.?A\.?|AG|BV|B\.V\.|NV|N\.V\.)\b/g,
+    score: 0.84,
   },
   {
     entityType: 'EMAIL_ADDRESS',
@@ -296,7 +317,7 @@ export class RedactionService {
 
   async scanDocuments(
     records: FileRecord[],
-    opts: { markitdownBaseUrl: string },
+    opts: { markitdownBaseUrl: string; openAiPdfFallback?: OpenAiPdfFallbackOptions },
   ): Promise<RedactionScanReport> {
     const documents: RedactionScanDocument[] = [];
 
@@ -543,7 +564,9 @@ function coalesceFindings(findings: RedactionFinding[]): RedactionFinding[] {
 }
 
 function normalizeEntityType(value: unknown): string {
-  return typeof value === 'string' ? value.trim().toUpperCase() : '';
+  if (typeof value !== 'string') return '';
+  const normalized = value.trim().toUpperCase();
+  return normalized === 'ORG' ? 'ORGANIZATION' : normalized;
 }
 
 function hasNearbyContext(text: string, start: number, end: number, context: RegExp): boolean {
@@ -590,13 +613,14 @@ function isLocalBaseUrl(baseUrl: string): boolean {
 
 async function textForScan(
   record: FileRecord,
-  opts: { markitdownBaseUrl: string },
+  opts: { markitdownBaseUrl: string; openAiPdfFallback?: OpenAiPdfFallbackOptions },
 ): Promise<string> {
   if (looksLikeText(record.mimeType)) {
     return record.bytes.toString('utf-8');
   }
   return convertFileToMarkdown(record, {
     markitdownBaseUrl: opts.markitdownBaseUrl,
+    openAiPdfFallback: opts.openAiPdfFallback,
   });
 }
 

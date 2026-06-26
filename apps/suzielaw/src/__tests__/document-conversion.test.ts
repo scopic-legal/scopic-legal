@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { convertToMarkdown } from '../document-conversion.js';
 
 function escapePdfText(text: string): string {
@@ -35,6 +35,13 @@ function buildTextPdf(text: string): Buffer {
 }
 
 describe('document conversion', () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
   it('extracts text from PDFs without markitdown-agent', async () => {
     const result = await convertToMarkdown(buildTextPdf('SAFE agreement by Jane Doe.'), {
       filename: 'safe.pdf',
@@ -44,5 +51,36 @@ describe('document conversion', () => {
 
     expect(result.filename).toBe('safe.pdf');
     expect(result.markdown).toContain('SAFE agreement by Jane Doe.');
+  });
+
+  it('falls back to OpenAI PDF extraction when local parsing cannot read the PDF', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ output_text: 'Extracted fallback agreement text.' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await convertToMarkdown(Buffer.from('not a real pdf'), {
+      filename: 'scanned.pdf',
+      mime: 'application/pdf',
+      markitdownAgentBaseUrl: '',
+      openAiPdfFallback: {
+        apiKey: 'test-key',
+        baseUrl: 'https://api.openai.test/v1',
+        model: 'gpt-4o-mini',
+      },
+    });
+
+    expect(result.markdown).toBe('Extracted fallback agreement text.');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.openai.test/v1/responses');
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.model).toBe('gpt-4o-mini');
+    expect(body.input[0].content[1]).toMatchObject({
+      type: 'input_file',
+      filename: 'scanned.pdf',
+    });
+    expect(body.input[0].content[1].file_data).toContain('data:application/pdf;base64,');
   });
 });

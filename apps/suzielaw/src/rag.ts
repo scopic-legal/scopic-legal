@@ -2,6 +2,7 @@ import type { DatabaseInstance } from '@teamsuzie/db-sqlite';
 import type { KbSearchHit, KnowledgeBaseStore } from '@teamsuzie/kb';
 import type { FileRecord } from './files.js';
 import { convertFileToMarkdown } from './document-tools.js';
+import type { OpenAiPdfFallbackOptions } from './document-conversion.js';
 
 export type { KbSearchHit } from '@teamsuzie/kb';
 
@@ -9,17 +10,20 @@ export interface WorkspaceRagOptions {
   db: DatabaseInstance;
   kb: KnowledgeBaseStore;
   markitdownBaseUrl: string;
+  openAiPdfFallback?: OpenAiPdfFallbackOptions;
 }
 
 export class WorkspaceRag {
   private readonly db: DatabaseInstance;
   private readonly kb: KnowledgeBaseStore;
   private readonly markitdownBaseUrl: string;
+  private readonly openAiPdfFallback?: OpenAiPdfFallbackOptions;
 
   constructor(opts: WorkspaceRagOptions) {
     this.db = opts.db;
     this.kb = opts.kb;
     this.markitdownBaseUrl = opts.markitdownBaseUrl;
+    this.openAiPdfFallback = opts.openAiPdfFallback;
   }
 
   async indexFile(
@@ -28,6 +32,7 @@ export class WorkspaceRag {
   ): Promise<{ ok: true; kbDocId: string; chunkCount: number } | { ok: false; reason: string }> {
     const markdown = await convertFileToMarkdown(record, {
       markitdownBaseUrl: this.markitdownBaseUrl,
+      openAiPdfFallback: this.openAiPdfFallback,
     });
     if (!markdown.trim()) {
       return { ok: false, reason: 'converted markdown was empty' };

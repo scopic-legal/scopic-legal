@@ -241,6 +241,11 @@ export const config = {
     /** markitdown-agent base URL. When set, the agent gets convert_to_markdown + export_to_docx. */
     baseUrl: (process.env.SCOPIC_MARKITDOWN_AGENT_BASE_URL || '').replace(/\/$/, ''),
   },
+  openAiPdfFallback: {
+    apiKey: process.env.SCOPIC_OPENAI_PDF_API_KEY || process.env.OPENAI_API_KEY || undefined,
+    baseUrl: (process.env.SCOPIC_OPENAI_PDF_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
+    model: process.env.SCOPIC_OPENAI_PDF_MODEL || 'gpt-4o',
+  },
   legalResearch: {
     /** CourtListener API token from https://www.courtlistener.com/profile/api/. Optional. */
     courtListenerToken: process.env.SCOPIC_COURTLISTENER_TOKEN || undefined,

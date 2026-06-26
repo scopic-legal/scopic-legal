@@ -43,10 +43,37 @@ describe('redaction policy', () => {
     expect(result.summary.byType.PERSON).toBe(3);
   });
 
+  it('masks corporate party names without Presidio', async () => {
+    const service = new RedactionService({ scoreThreshold: 0.55 });
+
+    const result = await service.redactText(
+      'This Mutual Non-Disclosure Agreement is between Amdocs Development Limited, with offices located at 1 Main Street, and the Company.',
+    );
+
+    expect(result.text).not.toContain('Amdocs Development Limited');
+    expect(result.text).toContain('[PARTY REDACTED]');
+    expect(result.summary.byType.ORGANIZATION).toBe(1);
+  });
+  it('masks legal-context human party names without Presidio', async () => {
+    const service = new RedactionService({ scoreThreshold: 0.55 });
+
+    const result = await service.redactText(
+      'This settlement agreement is by and between Jane Doe, an individual, and John Q. Public, residing at 123 Main Street.',
+    );
+
+    expect(result.text).not.toContain('Jane Doe');
+    expect(result.text).not.toContain('John Q. Public');
+    expect(result.text).toContain('[PERSON REDACTED]');
+    expect(result.summary.byType.PERSON).toBe(2);
+  });
+
   it('combines Presidio analyzer findings with local recognizers', async () => {
     globalThis.fetch = vi.fn(async () =>
       new Response(
-        JSON.stringify([{ entity_type: 'PERSON', start: 0, end: 8, score: 0.91 }]),
+        JSON.stringify([
+          { entity_type: 'PERSON', start: 0, end: 8, score: 0.91 },
+          { entity_type: 'ORGANIZATION', start: 17, end: 29, score: 0.88 },
+        ]),
         { status: 200, headers: { 'content-type': 'application/json' } },
       ),
     ) as typeof fetch;
@@ -55,11 +82,11 @@ describe('redaction policy', () => {
       scoreThreshold: 0.55,
     });
 
-    const result = await service.redactText('Jane Doe emailed jane@example.com.');
+    const result = await service.redactText('Jane Doe emailed Acme Limited at jane@example.com.');
 
-    expect(result.text).toBe('[PERSON REDACTED] emailed [EMAIL REDACTED].');
+    expect(result.text).toBe('[PERSON REDACTED] emailed [PARTY REDACTED] at [EMAIL REDACTED].');
     expect(result.provider).toBe('hybrid');
-    expect(result.summary.bySource.presidio).toBe(1);
+    expect(result.summary.bySource.presidio).toBe(2);
     expect(result.summary.bySource.local).toBe(1);
   });
 

@@ -29,6 +29,14 @@ interface OllamaChatChunk {
   done?: boolean;
 }
 
+interface ThinkTagState {
+  inThinking: boolean;
+  buffer: string;
+}
+
+const THINK_OPEN = '<think>';
+const THINK_CLOSE = '</think>';
+
 function toOllamaMessages(messages: ChatMessage[], systemPrompt?: string): Array<{ role: string; content: string }> {
   const out: Array<{ role: string; content: string }> = [];
   if (systemPrompt?.trim()) out.push({ role: 'system', content: systemPrompt });
@@ -56,6 +64,82 @@ function chunkContent(chunk: OllamaChatChunk): string {
   return chunk.message?.content ?? chunk.response ?? '';
 }
 
+function shouldRequestThinking(model: string, extraBody: Record<string, unknown> | undefined): boolean {
+  if (extraBody && Object.prototype.hasOwnProperty.call(extraBody, 'think')) return false;
+  return /(^|[:/ -])(?:gemma\d*|qwen|deepseek-r1|gpt-oss)(?=$|[:/ -])/i.test(model);
+}
+
+function bodyForRequest(agent: AgentTarget, messages: ChatMessage[], systemPrompt: string | undefined, think: boolean) {
+  return {
+    ...(agent.extraBody ?? {}),
+    ...(think ? { think: true } : {}),
+    model: agent.model,
+    messages: toOllamaMessages(messages, systemPrompt),
+    stream: true,
+  };
+}
+
+function partialTagSuffixLength(text: string, tag: string): number {
+  const lower = text.toLowerCase();
+  const lowerTag = tag.toLowerCase();
+  const max = Math.min(lower.length, lowerTag.length - 1);
+  for (let length = max; length > 0; length -= 1) {
+    if (lower.endsWith(lowerTag.slice(0, length))) return length;
+  }
+  return 0;
+}
+
+function splitThinkTaggedContent(
+  state: ThinkTagState,
+  text: string,
+  flush = false,
+): Array<{ type: 'reasoning' | 'chunk'; text: string }> {
+  const events: Array<{ type: 'reasoning' | 'chunk'; text: string }> = [];
+  state.buffer += text;
+
+  while (state.buffer) {
+    const tag = state.inThinking ? THINK_CLOSE : THINK_OPEN;
+    const index = state.buffer.toLowerCase().indexOf(tag);
+    if (index >= 0) {
+      const before = state.buffer.slice(0, index);
+      if (before) {
+        events.push({ type: state.inThinking ? 'reasoning' : 'chunk', text: before });
+      }
+      state.buffer = state.buffer.slice(index + tag.length);
+      state.inThinking = !state.inThinking;
+      continue;
+    }
+
+    const keep = flush ? 0 : partialTagSuffixLength(state.buffer, tag);
+    const emit = state.buffer.slice(0, state.buffer.length - keep);
+    if (emit) {
+      events.push({ type: state.inThinking ? 'reasoning' : 'chunk', text: emit });
+    }
+    state.buffer = state.buffer.slice(state.buffer.length - keep);
+    break;
+  }
+
+  return events;
+}
+
+async function postOllamaChat(
+  baseUrl: string,
+  headers: Record<string, string>,
+  agent: AgentTarget,
+  messages: ChatMessage[],
+  systemPrompt: string | undefined,
+  think: boolean,
+  fetchImpl: typeof fetch,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
+  return fetchImpl(`${baseUrl}/api/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(bodyForRequest(agent, messages, systemPrompt, think)),
+    signal: signal ?? AbortSignal.timeout(180_000),
+  });
+}
+
 export async function* runOllamaChatOnlyTurn({
   agent,
   messages,
@@ -66,28 +150,35 @@ export async function* runOllamaChatOnlyTurn({
   const baseUrl = normalizeOpenAICompatibleBaseUrl(agent.baseUrl) ?? OLLAMA_DEFAULT_BASE_URL;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (agent.apiKey) headers.Authorization = `Bearer ${agent.apiKey}`;
+  const requestThinking = shouldRequestThinking(agent.model, agent.extraBody);
 
-  const response = await fetchImpl(`${baseUrl}/api/chat`, {
-    method: 'POST',
+  let response = await postOllamaChat(
+    baseUrl,
     headers,
-    body: JSON.stringify({
-      ...(agent.extraBody ?? {}),
-      model: agent.model,
-      messages: toOllamaMessages(messages, systemPrompt),
-      stream: true,
-    }),
-    signal: signal ?? AbortSignal.timeout(180_000),
-  });
+    agent,
+    messages,
+    systemPrompt,
+    requestThinking,
+    fetchImpl,
+    signal,
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    throw new Error(`Ollama returned ${response.status}: ${text.slice(0, 200)}`);
+    if (requestThinking && /think|thinking/i.test(text)) {
+      response = await postOllamaChat(baseUrl, headers, agent, messages, systemPrompt, false, fetchImpl, signal);
+    }
+    if (!response.ok) {
+      const retryText = response === undefined ? text : await response.text().catch(() => text);
+      throw new Error(`Ollama returned ${response.status}: ${retryText.slice(0, 200)}`);
+    }
   }
   if (!response.body) throw new Error('Ollama returned no response body');
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  const thinkTags: ThinkTagState = { inThinking: false, buffer: '' };
 
   try {
     while (true) {
@@ -112,9 +203,16 @@ export async function* runOllamaChatOnlyTurn({
         if (reasoning) yield { type: 'reasoning', text: reasoning };
 
         const content = chunkContent(chunk);
-        if (content) yield { type: 'chunk', text: content };
+        if (content) {
+          for (const event of splitThinkTaggedContent(thinkTags, content)) {
+            yield event;
+          }
+        }
 
         if (chunk.done) {
+          for (const event of splitThinkTaggedContent(thinkTags, '', true)) {
+            yield event;
+          }
           yield { type: 'done' };
           return;
         }
@@ -127,12 +225,19 @@ export async function* runOllamaChatOnlyTurn({
         const reasoning = chunkReasoning(chunk);
         if (reasoning) yield { type: 'reasoning', text: reasoning };
         const content = chunkContent(chunk);
-        if (content) yield { type: 'chunk', text: content };
+        if (content) {
+          for (const event of splitThinkTaggedContent(thinkTags, content)) {
+            yield event;
+          }
+        }
       } catch {
         // Ignore a partial trailing JSON fragment.
       }
     }
 
+    for (const event of splitThinkTaggedContent(thinkTags, '', true)) {
+      yield event;
+    }
     yield { type: 'done' };
   } finally {
     reader.releaseLock();

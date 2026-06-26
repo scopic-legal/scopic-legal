@@ -138,21 +138,6 @@ function greetingFor(date: Date): string {
 }
 
 
-function TypingDots() {
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-muted-foreground"
-      role="status"
-      aria-label="Assistant is typing"
-    >
-      <span className="typing-dot" />
-      <span className="typing-dot" />
-      <span className="typing-dot" />
-    </span>
-  );
-}
-
-
 function proposeEditsResults(message: Message): ProposeEditsResult[] {
   if (!message.toolEvents) return [];
   const out: ProposeEditsResult[] = [];
@@ -187,7 +172,7 @@ function MessageItem({
   const isUser = message.role === 'user';
   const hasToolEvents = !!message.toolEvents && message.toolEvents.length > 0;
   const hasReasoning = !!message.reasoning?.trim();
-  const showTyping =
+  const showThinkingPlaceholder =
     !isUser && isActive && message.content.length === 0 && !hasToolEvents && !hasReasoning;
   const proposeResults = isUser ? [] : proposeEditsResults(message);
 
@@ -219,10 +204,8 @@ function MessageItem({
           {message.redactionSummary.total === 1 ? '' : 's'}
         </div>
       )}
-      {showTyping ? (
-        <div className="text-[15px] leading-relaxed">
-          <TypingDots />
-        </div>
+      {showThinkingPlaceholder ? (
+        <ReasoningPanel text="Waiting for model output..." active />
       ) : (
         <>
           {hasReasoning && (

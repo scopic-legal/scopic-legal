@@ -312,6 +312,7 @@ const matterRag = new WorkspaceRag({
   db,
   kb: kbStore,
   markitdownBaseUrl: config.markitdown.baseUrl,
+  openAiPdfFallback: config.openAiPdfFallback,
 });
 
 function activeTools(): AnyToolDefinition[] {
@@ -739,6 +740,7 @@ app.post('/api/matters/:matterId/redaction/report', requireAuth, async (req, res
   try {
     const report = await redaction.scanDocuments(records, {
       markitdownBaseUrl: config.markitdown.baseUrl,
+      openAiPdfFallback: config.openAiPdfFallback,
     });
     res.json({
       ...report,
@@ -1616,6 +1618,7 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
     fileStore,
     docStore,
     markitdownBaseUrl: config.markitdown.baseUrl,
+    openAiPdfFallback: config.openAiPdfFallback,
     redactText: redactTextForTurn,
   });
   const diffTools = buildDiffTools({
@@ -1700,13 +1703,26 @@ app.post('/api/chat', validatePlatformRequest, requireAuth, requireCreditedOrg, 
   }
 
   let useNativeOllamaChat = false;
-  if (isOllamaRequest && !(await selectedOllamaModelSupportsTools(agent))) {
-    turnConfig.tools = [];
-    turnConfig.systemPrompt = appendSystemPrompt(
-      turnConfig.systemPrompt,
-      OLLAMA_NO_TOOLS_SYSTEM_PROMPT,
-    );
-    useNativeOllamaChat = true;
+  if (isOllamaRequest) {
+    const supportsOllamaTools = await selectedOllamaModelSupportsTools(agent);
+    const hasBinaryAttachments = allAttachments.some((record) => {
+      const mime = record.mimeType || '';
+      return !(
+        /^text\//i.test(mime) ||
+        /^application\/json\b/i.test(mime) ||
+        /^application\/(?:csv|xml|x-xml)\b/i.test(mime)
+      );
+    });
+    const workflowRequiresTools = activeWorkflow?.outputMode === 'generate_docx';
+
+    if (!supportsOllamaTools || (!hasBinaryAttachments && !workflowRequiresTools)) {
+      turnConfig.tools = [];
+      turnConfig.systemPrompt = appendSystemPrompt(
+        turnConfig.systemPrompt,
+        OLLAMA_NO_TOOLS_SYSTEM_PROMPT,
+      );
+      useNativeOllamaChat = true;
+    }
   }
 
   // Accumulators so we can persist the assistant turn into chat_messages
